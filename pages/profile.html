@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile | Cura Code</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body { 
+            font-family: 'Nunito', sans-serif; 
+            background: #f4f9fc; 
+            padding: 40px 20px; 
+            display: flex; justify-content: center; 
+            margin: 0; min-height: 100vh;
+        }
+        
+        .card { 
+            background: white; width: 100%; max-width: 600px; 
+            padding: 40px; border-radius: 20px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05); 
+        }
+        
+        /* HEADER */
+        .profile-header { text-align: center; margin-bottom: 30px; }
+        .avatar-large { 
+            width: 90px; height: 90px; margin: 0 auto 15px;
+            background: linear-gradient(135deg, #6AC9E8, #4FB3D9); 
+            color: white; font-size: 2.5rem; font-weight: 800; 
+            display: flex; align-items: center; justify-content: center; 
+            border-radius: 50%; box-shadow: 0 5px 15px rgba(106, 201, 232, 0.3);
+        }
+        h2 { margin: 0; color: #2D3436; font-size: 1.5rem; }
+        p.email-display { color: #888; margin: 5px 0 0; font-size: 0.95rem; }
+
+        /* FORM GRID */
+        .profile-form { display: flex; flex-direction: column; gap: 15px; margin-bottom: 30px; }
+        
+        /* New Style for Side-by-Side Inputs */
+        .form-row { display: flex; gap: 15px; }
+        .form-row .form-group { flex: 1; }
+
+        .form-group { text-align: left; }
+        .form-group label { display: block; font-size: 0.8rem; font-weight: 700; color: #6AC9E8; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
+        
+        .form-input { 
+            width: 100%; padding: 12px 15px; 
+            border: 2px solid #eef2f5; border-radius: 12px; 
+            font-family: inherit; font-size: 1rem; font-weight: 600; color: #333;
+            background: #f9f9f9; transition: 0.2s; box-sizing: border-box;
+        }
+        .form-input:disabled { background: white; border-color: transparent; padding-left: 0; color: #555; }
+        .form-input:focus { border-color: #6AC9E8; background: #fff; outline: none; }
+
+        /* ACTION BUTTONS */
+        .btn-row { display: flex; gap: 10px; justify-content: flex-end; margin-top: -10px; margin-bottom: 30px; }
+        
+        .btn { padding: 10px 20px; border-radius: 30px; border: none; font-weight: 700; cursor: pointer; transition: 0.2s; font-size: 0.9rem; }
+        .btn-edit { background: #eef2f5; color: #636e72; }
+        .btn-edit:hover { background: #dfe6e9; }
+        
+        .btn-save { background: #6AC9E8; color: white; display: none; }
+        .btn-save:hover { background: #4FB3D9; }
+        
+        .btn-cancel { background: #fff0f0; color: #ff7675; display: none; }
+        .btn-cancel:hover { background: #ffecec; }
+
+        /* SUBSCRIPTION BOX */
+        .sub-box { 
+            background: #f8fbfe; border: 1px solid #eef2f5; 
+            padding: 20px; border-radius: 16px; margin-top: 30px;
+        }
+        .sub-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .sub-title { font-weight: 800; color: #2D3436; font-size: 1rem; }
+        .status-badge { padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; }
+        .status-active { background: #e3f9e5; color: #2ecc71; }
+        .status-expired { background: #ffecec; color: #ff7675; }
+
+        .renew-section { 
+            margin-top: 15px; padding-top: 15px; border-top: 1px dashed #ddd; 
+            display: flex; gap: 10px; 
+        }
+        .renew-input { flex: 1; padding: 10px; border: 2px solid #ddd; border-radius: 10px; font-family: inherit; }
+        .btn-renew { background: #f39c12; color: white; border: none; padding: 0 20px; border-radius: 10px; font-weight: 700; cursor: pointer; }
+        .btn-renew:hover { background: #e67e22; }
+
+        .back-link { display: block; margin-top: 30px; text-align: center; text-decoration: none; color: #b2bec3; font-weight: 700; font-size: 0.9rem; transition: 0.2s; }
+        .back-link:hover { color: #6AC9E8; }
+
+        /* Editing State */
+        body.editing .form-input { border-color: #ddd; background: #fff; padding-left: 15px; }
+        body.editing .btn-edit { display: none; }
+        body.editing .btn-save, body.editing .btn-cancel { display: inline-block; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <div class="profile-header">
+            <div class="avatar-large" id="disp-initial">U</div>
+            <h2 id="disp-name">Loading...</h2>
+            <p class="email-display" id="disp-email">...</p>
+        </div>
+
+        <div class="profile-form">
+            <div class="form-group">
+                <label>Full Name</label>
+                <input type="text" id="in-name" class="form-input" disabled>
+            </div>
+            <div class="form-group">
+                <label>Affiliation</label>
+                <input type="text" id="in-affil" class="form-input" disabled>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>City</label>
+                    <input type="text" id="in-city" class="form-input" disabled>
+                </div>
+                <div class="form-group">
+                    <label>Country</label>
+                    <input type="text" id="in-country" class="form-input" disabled>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Phone Number</label>
+                <input type="tel" id="in-phone" class="form-input" disabled>
+            </div>
+            <div class="form-group">
+                <label>Email Address (Read Only)</label>
+                <input type="email" id="in-email" class="form-input" disabled style="color:#aaa;">
+            </div>
+        </div>
+
+        <div class="btn-row">
+            <button class="btn btn-edit" onclick="toggleEdit(true)"><i class="fas fa-pen"></i> Edit Profile</button>
+            <button class="btn btn-cancel" onclick="toggleEdit(false)">Cancel</button>
+            <button class="btn btn-save" onclick="saveProfile()">Save Changes</button>
+        </div>
+
+        <div class="sub-box">
+            <div class="sub-header">
+                <span class="sub-title">Subscription Plan</span>
+                <span id="sub-badge" class="status-badge status-active">Checking...</span>
+            </div>
+            <div id="sub-details" style="font-size:0.9rem; color:#666;">
+                Calculating remaining days...
+            </div>
+
+            <div class="renew-section">
+                <input type="text" id="renew-code" class="renew-input" placeholder="Enter Renewal Code">
+                <button class="btn-renew" onclick="renewAccount()">Activate</button>
+            </div>
+        </div>
+
+        <a href="../dashboard.html" class="back-link"><i class="fas fa-arrow-left"></i>Back to Dashboard</a>
+    </div>
+
+    <script>
+        // 1. CONFIG
+        const firebaseConfig = { apiKey: "AIzaSyCbE13rFgfC6ipnf8-rYR8uAywsseU7Ntg", authDomain: "curacode-c6200.firebaseapp.com", projectId: "curacode-c6200", appId: "1:773218077864:web:217dcc93c6869acb44c69d" };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        let currentUser = null;
+        let originalData = {};
+
+        // 2. LOAD DATA
+        auth.onAuthStateChanged(async user => {
+            if(user) {
+                currentUser = user;
+                loadProfile();
+            } else {
+                window.location.href = "login.html";
+            }
+        });
+
+        async function loadProfile() {
+            try {
+                const doc = await db.collection('users').doc(currentUser.uid).get();
+                if (!doc.exists) return;
+
+                const data = doc.data();
+                originalData = data; // Cache for cancel
+
+                // Populate UI
+                document.getElementById('disp-name').innerText = data.name;
+                document.getElementById('disp-initial').innerText = data.name.charAt(0).toUpperCase();
+                document.getElementById('disp-email').innerText = data.email;
+
+                document.getElementById('in-name').value = data.name;
+                document.getElementById('in-affil').value = data.affiliation || "";
+                
+                // LOAD NEW FIELDS
+                document.getElementById('in-city').value = data.city || "";
+                document.getElementById('in-country').value = data.country || "";
+                
+                document.getElementById('in-phone').value = data.phone || "";
+                document.getElementById('in-email').value = data.email;
+
+                // Subscription Logic
+                checkSubscription(data.expiryDate);
+
+            } catch (e) {
+                console.error("Error loading profile:", e);
+            }
+        }
+
+        // 3. EDIT LOGIC
+        function toggleEdit(enable) {
+            // Added new fields to toggle list
+            const inputs = ['in-name', 'in-affil', 'in-phone', 'in-city', 'in-country'];
+            
+            if (enable) {
+                document.body.classList.add('editing');
+                inputs.forEach(id => document.getElementById(id).disabled = false);
+                document.getElementById('in-name').focus();
+            } else {
+                document.body.classList.remove('editing');
+                inputs.forEach(id => document.getElementById(id).disabled = true);
+                // Revert to original data if canceled
+                document.getElementById('in-name').value = originalData.name;
+                document.getElementById('in-affil').value = originalData.affiliation || "";
+                document.getElementById('in-city').value = originalData.city || "";
+                document.getElementById('in-country').value = originalData.country || "";
+                document.getElementById('in-phone').value = originalData.phone || "";
+            }
+        }
+
+        async function saveProfile() {
+            const newName = document.getElementById('in-name').value.trim();
+            const newAffil = document.getElementById('in-affil').value.trim();
+            const newPhone = document.getElementById('in-phone').value.trim();
+            const newCity = document.getElementById('in-city').value.trim();
+            const newCountry = document.getElementById('in-country').value.trim();
+
+            if (!newName) return alert("Name is required.");
+
+            const btn = document.querySelector('.btn-save');
+            btn.innerText = "Saving...";
+
+            try {
+                await db.collection('users').doc(currentUser.uid).update({
+                    name: newName,
+                    affiliation: newAffil,
+                    phone: newPhone,
+                    city: newCity,
+                    country: newCountry
+                });
+
+                // Update Local UI
+                document.getElementById('disp-name').innerText = newName;
+                document.getElementById('disp-initial').innerText = newName.charAt(0).toUpperCase();
+                
+                // Update Cache
+                originalData.name = newName;
+                originalData.affiliation = newAffil;
+                originalData.phone = newPhone;
+                originalData.city = newCity;
+                originalData.country = newCountry;
+
+                btn.innerText = "Save Changes";
+                toggleEdit(false);
+                alert("Profile updated successfully!");
+
+            } catch (e) {
+                console.error(e);
+                alert("Error updating profile.");
+                btn.innerText = "Save Changes";
+            }
+        }
+
+        // 4. SUBSCRIPTION LOGIC
+        function checkSubscription(timestamp) {
+            if(!timestamp) return;
+            
+            const now = new Date();
+            const expiry = timestamp.toDate();
+            const diffTime = expiry - now;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            const badge = document.getElementById('sub-badge');
+            const details = document.getElementById('sub-details');
+
+            if(diffDays > 0) {
+                badge.className = "status-badge status-active";
+                badge.innerText = "Active";
+                details.innerHTML = `You have <b>${diffDays} days</b> remaining.<br>Expires on: ${expiry.toLocaleDateString()}`;
+            } else {
+                badge.className = "status-badge status-expired";
+                badge.innerText = "Expired";
+                details.innerHTML = `Your access expired on ${expiry.toLocaleDateString()}. <br>Please renew below to continue.`;
+            }
+        }
+
+        async function renewAccount() {
+            const code = document.getElementById('renew-code').value.trim();
+            if(!code) return alert("Please enter a code.");
+
+            const btn = document.querySelector('.btn-renew');
+            btn.innerText = "...";
+
+            try {
+                const snapshot = await db.collection('access_codes').where('code', '==', code).get();
+                if(snapshot.empty) throw new Error("Invalid Code");
+                
+                const codeDoc = snapshot.docs[0];
+                if(codeDoc.data().used) throw new Error("Code already used");
+
+                const duration = codeDoc.data().duration || 30;
+                
+                // Calculate new date
+                const userDoc = await db.collection('users').doc(currentUser.uid).get();
+                let currentExpiry = userDoc.data().expiryDate.toDate();
+                const now = new Date();
+
+                // If expired, start from today. If active, add to existing expiry.
+                let baseDate = (currentExpiry > now) ? currentExpiry : now;
+                let newExpiry = new Date(baseDate);
+                newExpiry.setDate(baseDate.getDate() + duration);
+
+                // Update DB
+                await db.collection('access_codes').doc(codeDoc.id).update({ used: true });
+                await db.collection('users').doc(currentUser.uid).update({
+                    expiryDate: firebase.firestore.Timestamp.fromDate(newExpiry)
+                });
+
+                alert(`Success! Access extended by ${duration} days.`);
+                location.reload();
+
+            } catch(e) {
+                alert(e.message);
+                btn.innerText = "Activate";
+            }
+        }
+    </script>
+</body>
+</html>

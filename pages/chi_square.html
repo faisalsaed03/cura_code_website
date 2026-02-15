@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Chi-Square Calculator | Cura Code</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <style>
+        body { font-family: 'Nunito'; background: linear-gradient(135deg, #f0f7fa 0%, #ffffff 100%); min-height: 100vh; margin: 0; display: flex; flex-direction: column; }
+        .navbar { padding: 20px; position: absolute; width: 100%; box-sizing: border-box; }
+        .back-btn { text-decoration: none; color: #555; font-weight: 800; display: flex; align-items: center; gap: 8px; cursor: pointer; }
+        .tool-container { max-width: 550px; margin: 80px auto; background: rgba(255,255,255,0.9); padding: 40px; border-radius: 24px; text-align: center; box-shadow: 0 20px 60px rgba(106, 201, 232, 0.2); }
+        h1 { color: #2D3436; margin-bottom: 20px; font-size: 1.5rem; }
+        
+        .grid-2x2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; text-align: left; }
+        label { font-weight: 800; color: #555; font-size: 0.8rem; }
+        input { width: 100%; padding: 12px; border: 2px solid #eef2f5; border-radius: 10px; margin-top: 5px; box-sizing: border-box; text-align: center; }
+        
+        .btn-calc { width: 100%; padding: 15px; background: #6AC9E8; color: white; border: none; border-radius: 12px; font-weight: 800; cursor: pointer; margin-top: 15px; }
+        
+        #results { margin-top: 20px; padding: 20px; background: #e3f9e5; border-radius: 15px; display: none; }
+        .res-val { font-size: 1.8rem; font-weight: 900; color: #2ecc71; display: block; }
+    </style>
+</head>
+<body>
+    <div id="loading-screen" style="position:fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:9999; display:flex; align-items:center; justify-content:center; color:#6AC9E8; font-weight:800;">Verifying Access...</div>
+    <nav class="navbar"><div class="back-btn" onclick="window.location.href='calculators_hub.html'">⬅ Back to Hub</div></nav>
+
+    <div class="tool-container">
+        <h1>Chi-Square Test (2x2)</h1>
+        <p style="color:#888; font-size:0.9rem; margin-bottom:25px;">Enter observed frequencies for two groups.</p>
+
+        <div class="grid-2x2">
+            <div><label>Group 1 (Yes)</label><input type="number" id="a"></div>
+            <div><label>Group 1 (No)</label><input type="number" id="b"></div>
+            <div><label>Group 2 (Yes)</label><input type="number" id="c"></div>
+            <div><label>Group 2 (No)</label><input type="number" id="d"></div>
+        </div>
+
+        <button class="btn-calc" onclick="calcChi()">Calculate P-Value</button>
+
+        <div id="results">
+            <span style="color:#27ae60; font-weight:800;">P-Value</span>
+            <span id="p-val" class="res-val">0.0000</span>
+            <span id="chi-val" style="color:#555; font-size:0.9rem;">Chi-Square = 0.00</span>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = { apiKey: "AIzaSyCbE13rFgfC6ipnf8-rYR8uAywsseU7Ntg", authDomain: "curacode-c6200.firebaseapp.com", projectId: "curacode-c6200", appId: "1:773218077864:web:217dcc93c6869acb44c69d" };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        firebase.auth().onAuthStateChanged(u => { if(u) document.getElementById('loading-screen').style.display='none'; else window.location.href="../login.html"; });
+
+        function calcChi() {
+            const a = parseFloat(document.getElementById('a').value);
+            const b = parseFloat(document.getElementById('b').value);
+            const c = parseFloat(document.getElementById('c').value);
+            const d = parseFloat(document.getElementById('d').value);
+
+            if ([a,b,c,d].some(isNaN)) return alert("Fill all fields");
+
+            const total = a + b + c + d;
+            // Expected values
+            const r1 = a + b, r2 = c + d, c1 = a + c, c2 = b + d;
+            const E_a = (r1 * c1) / total;
+            const E_b = (r1 * c2) / total;
+            const E_c = (r2 * c1) / total;
+            const E_d = (r2 * c2) / total;
+
+            // Chi-Square Statistic sum((O-E)^2 / E)
+            const chi = Math.pow(a-E_a,2)/E_a + Math.pow(b-E_b,2)/E_b + Math.pow(c-E_c,2)/E_c + Math.pow(d-E_d,2)/E_d;
+
+            // P-Value approximation for 1 Degree of Freedom (Chi^2 is approx Z^2)
+            // We reuse the Z-score logic: sqrt(Chi) = Z
+            const z = Math.sqrt(chi);
+            const p = 2 * (1 - cdf(z)); 
+
+            document.getElementById('p-val').innerText = p < 0.0001 ? "< 0.0001" : p.toFixed(4);
+            document.getElementById('chi-val').innerText = `X² = ${chi.toFixed(3)}`;
+            document.getElementById('results').style.display = 'block';
+        }
+
+        function cdf(x) {
+            var t = 1 / (1 + .2316419 * Math.abs(x));
+            var d = .3989423 * Math.exp(-x * x / 2);
+            var prob = d * t * (.3193815 + t * (-.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+            if (x > 0) prob = 1 - prob;
+            return 1 - prob;
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flowchart Pro | Cura Code</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
+            --danger: #ef4444;
+            --surface: #ffffff;
+            --bg: #f3f4f6;
+            --border: #e5e7eb;
+            --text: #1f2937;
+            --sidebar-w: 280px;
+        }
+
+        * { box-sizing: border-box; user-select: none; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0; padding: 0;
+            background: var(--bg);
+            color: var(--text);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* NAVBAR */
+        .navbar {
+            padding: 0 24px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            display: flex; justify-content: space-between; align-items: center;
+            height: 60px; z-index: 100;
+        }
+        .logo { font-weight: 700; font-size: 1.1rem; color: var(--text); display: flex; align-items: center; gap: 8px; }
+        .logo i { color: var(--primary); }
+        .back-btn { text-decoration: none; color: #6b7280; font-weight: 500; font-size: 0.9rem; transition: 0.2s; }
+        .back-btn:hover { color: var(--primary); }
+
+        /* WORKSPACE */
+        .workspace { display: flex; height: calc(100vh - 60px); }
+
+        /* SIDEBAR */
+        .sidebar {
+            width: var(--sidebar-w);
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            padding: 24px;
+            display: flex; flex-direction: column; gap: 24px;
+            z-index: 10;
+        }
+
+        h2 { font-size: 0.75rem; text-transform: uppercase; color: #9ca3af; margin: 0 0 10px 0; font-weight: 700; letter-spacing: 0.05em; }
+
+        .tools-group { display: flex; flex-direction: column; gap: 8px; }
+
+        .tool-btn {
+            padding: 10px 14px; border-radius: 6px; border: 1px solid var(--border);
+            background: var(--surface); font-weight: 500; color: #4b5563; cursor: pointer;
+            transition: all 0.1s; display: flex; align-items: center; gap: 10px; font-size: 0.9rem;
+        }
+        .tool-btn:hover { background: #f9fafb; color: #111827; border-color: #d1d5db; }
+        .tool-btn.active { background: #eff6ff; color: var(--primary); border-color: var(--primary); }
+        .tool-btn.active-danger { background: #fef2f2; color: var(--danger); border-color: var(--danger); }
+
+        .btn-download {
+            margin-top: auto; background: var(--primary); color: white; border: none;
+            justify-content: center; font-weight: 600;
+        }
+        .btn-download:hover { background: var(--primary-dark); color: white; }
+
+        /* CANVAS */
+        .canvas-area {
+            flex: 1; position: relative; overflow: hidden;
+            background-color: #f8fafc;
+            background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+            background-size: 24px 24px;
+            cursor: grab;
+        }
+        .canvas-area.connect-cursor { cursor: crosshair; }
+        .canvas-area.delete-cursor { cursor: not-allowed; }
+
+        /* NODES */
+        .node {
+            position: absolute;
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px 16px;
+            min-width: 140px;
+            min-height: 50px; /* Min height for resizing */
+            text-align: center;
+            font-weight: 600;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            cursor: move;
+            z-index: 10;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            color: #334155;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .node:active { cursor: grabbing; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .node.selected { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15); }
+
+        /* Shapes */
+        .shape-start { border-radius: 50px; background: #3b82f6; color: white; border: none; }
+        .shape-decision { 
+            width: 120px; height: 120px; 
+            background: #fffbeb; border-color: #f59e0b; 
+            transform: rotate(45deg); /* Diamond */
+            border-radius: 4px;
+        }
+        .shape-decision .node-content { transform: rotate(-45deg); width: 100%; }
+        /* Prevent resize handle from rotating with parent */
+        .shape-decision .resize-handle { transform: rotate(-45deg); bottom: 5px; right: 5px; }
+
+        .node-content { outline: none; cursor: text; line-height: 1.4; width: 100%; pointer-events: auto; }
+
+        /* REMOVE BUTTON (-) */
+        .delete-handle {
+            position: absolute; top: -10px; right: -10px;
+            width: 24px; height: 24px; background: var(--danger); color: white;
+            border-radius: 50%; display: none; align-items: center; justify-content: center;
+            font-size: 14px; cursor: pointer; font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2); z-index: 20;
+        }
+        .shape-decision .delete-handle { transform: rotate(-45deg) translate(5px, -5px); }
+        .node:hover .delete-handle { display: flex; }
+
+        /* RESIZE HANDLE */
+        .resize-handle {
+            position: absolute; bottom: 2px; right: 2px;
+            width: 10px; height: 10px;
+            border-bottom: 2px solid #cbd5e1;
+            border-right: 2px solid #cbd5e1;
+            cursor: nwse-resize;
+            z-index: 15;
+        }
+        .node:hover .resize-handle { border-color: var(--primary); }
+
+        /* SVG LINES */
+        #connections-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 0; pointer-events: none; 
+        }
+        .canvas-area.disconnect-mode #connections-layer { pointer-events: auto; }
+        
+        path { 
+            fill: none; stroke: #94a3b8; stroke-width: 2px; 
+            transition: stroke 0.2s, stroke-width 0.2s; 
+        }
+        .canvas-area.disconnect-mode path { cursor: pointer; }
+        .canvas-area.disconnect-mode path:hover { stroke: var(--danger); stroke-width: 4px; }
+
+        #loading-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 9999; display: flex; align-items: center; justify-content: center; font-weight: 600; color: var(--primary); }
+    </style>
+</head>
+<body>
+
+    <div id="loading-screen">Verifying Access...</div>
+
+    <nav class="navbar">
+        <div class="logo"><i class="fas fa-project-diagram"></i> Flowchart Pro</div>
+        <a href="../dashboard.html" class="back-btn">Exit</a>
+    </nav>
+
+    <div class="workspace">
+        <div class="sidebar">
+            <div>
+                <h2>Shapes</h2>
+                <div class="tools-group">
+                    <button class="tool-btn" onclick="addNode('start')"><i class="fas fa-play-circle" style="color:#3b82f6;"></i> Start / End</button>
+                    <button class="tool-btn" onclick="addNode('process')"><i class="fas fa-square" style="color:#64748b;"></i> Process</button>
+                    <button class="tool-btn" onclick="addNode('decision')"><i class="fas fa-diamond" style="color:#f59e0b;"></i> Decision</button>
+                </div>
+            </div>
+            
+            <div>
+                <h2>Actions</h2>
+                <div class="tools-group">
+                    <button class="tool-btn" id="connectBtn" onclick="setMode('connect')">
+                        <i class="fas fa-link"></i> Connect
+                    </button>
+                    <button class="tool-btn" id="disconnectBtn" onclick="setMode('disconnect')">
+                        <i class="fas fa-cut"></i> Disconnect
+                    </button>
+                </div>
+            </div>
+
+            <button class="tool-btn btn-download" onclick="downloadCanvas()">
+                <i class="fas fa-download"></i> Export PNG
+            </button>
+        </div>
+
+        <div class="canvas-area" id="canvas">
+            <svg id="connections-layer"></svg>
+        </div>
+    </div>
+
+    <script>
+        // 1. FIREBASE AUTH
+        const firebaseConfig = { apiKey: "AIzaSyCbE13rFgfC6ipnf8-rYR8uAywsseU7Ntg", authDomain: "curacode-c6200.firebaseapp.com", projectId: "curacode-c6200", appId: "1:773218077864:web:217dcc93c6869acb44c69d" };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        firebase.auth().onAuthStateChanged(u => { 
+            if(u) document.getElementById('loading-screen').style.display='none'; 
+            else window.location.href="../login.html"; 
+        });
+
+        // 2. STATE
+        const canvas = document.getElementById('canvas');
+        const svgLayer = document.getElementById('connections-layer');
+        let nodes = [];
+        let connections = [];
+        let nodeIdCounter = 0;
+        
+        let isDragging = false;
+        let isResizing = false;
+        let activeNode = null; // Used for drag or resize
+        let startX=0, startY=0, startW=0, startH=0;
+        
+        let currentMode = 'none';
+        let connectStartNode = null;
+
+        // 3. ADD NODE
+        function addNode(type) {
+            setMode('none');
+            nodeIdCounter++;
+            const id = nodeIdCounter;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = rect.width / 2 - 70;
+            const y = rect.height / 2 - 35;
+
+            const node = document.createElement('div');
+            node.className = `node shape-${type}`;
+            node.style.left = `${x}px`;
+            node.style.top = `${y}px`;
+            node.id = `node-${id}`;
+            node.setAttribute('data-id', id);
+            
+            const text = type==='start'?'Start':(type==='decision'?'If...':'Action');
+            
+            node.innerHTML = `
+                <div class="node-content" contenteditable="true" onmousedown="event.stopPropagation()">${text}</div>
+                <div class="delete-handle" onclick="deleteNode(${id})"><i class="fas fa-minus"></i></div>
+                <div class="resize-handle" onmousedown="startResize(event, ${id})"></div>
+            `;
+
+            node.onmousedown = (e) => startDrag(e, node);
+            node.onclick = (e) => handleNodeClick(e, id);
+
+            canvas.appendChild(node);
+            nodes.push({ id, el: node, x, y, width: 0, height: 0 });
+            
+            setTimeout(() => updateNodeDims(id), 0);
+        }
+
+        function deleteNode(id) {
+            connections = connections.filter(c => c.from !== id && c.to !== id);
+            document.getElementById(`node-${id}`).remove();
+            nodes = nodes.filter(n => n.id !== id);
+            drawConnections();
+        }
+
+        // 4. DRAG & RESIZE LOGIC
+        function startDrag(e, node) {
+            if(e.target.classList.contains('delete-handle') || e.target.classList.contains('resize-handle') || currentMode !== 'none') return;
+            isDragging = true;
+            activeNode = node;
+            const r = node.getBoundingClientRect();
+            startX = e.clientX - r.left;
+            startY = e.clientY - r.top;
+        }
+
+        function startResize(e, id) {
+            e.stopPropagation(); // Stop drag start
+            isResizing = true;
+            activeNode = nodes.find(n => n.id === id);
+            startX = e.clientX;
+            startY = e.clientY;
+            startW = activeNode.el.offsetWidth;
+            startH = activeNode.el.offsetHeight;
+        }
+
+        window.onmousemove = (e) => {
+            if (isDragging && activeNode) {
+                const rect = canvas.getBoundingClientRect();
+                let x = e.clientX - rect.left - startX;
+                let y = e.clientY - rect.top - startY;
+                
+                activeNode.style.left = `${x}px`;
+                activeNode.style.top = `${y}px`;
+                
+                const id = parseInt(activeNode.getAttribute('data-id'));
+                const n = nodes.find(n => n.id === id);
+                if(n) { n.x = x; n.y = y; }
+                
+                drawConnections();
+            }
+            else if (isResizing && activeNode) {
+                const dx = e.clientX - startX;
+                const dy = e.clientY - startY;
+                
+                const newW = Math.max(100, startW + dx); // Min size
+                const newH = Math.max(50, startH + dy);
+                
+                activeNode.el.style.width = `${newW}px`;
+                activeNode.el.style.height = `${newH}px`;
+                
+                activeNode.width = newW;
+                activeNode.height = newH;
+                
+                drawConnections();
+            }
+        };
+
+        window.onmouseup = () => {
+            if (isDragging || isResizing) {
+                if(activeNode && isDragging) updateNodeDims(parseInt(activeNode.getAttribute('data-id')));
+                isDragging = false;
+                isResizing = false;
+                activeNode = null;
+            }
+        };
+
+        function updateNodeDims(id) {
+            const n = nodes.find(n => n.id === id);
+            if(n) { n.width = n.el.offsetWidth; n.height = n.el.offsetHeight; }
+            drawConnections();
+        }
+
+        // 5. MODES (Connect/Disconnect)
+        function setMode(mode) {
+            if (currentMode === mode) mode = 'none';
+            currentMode = mode;
+            connectStartNode = null;
+            document.querySelectorAll('.node').forEach(n => n.classList.remove('selected'));
+
+            const cBtn = document.getElementById('connectBtn');
+            const dBtn = document.getElementById('disconnectBtn');
+            cBtn.className = 'tool-btn'; dBtn.className = 'tool-btn';
+            canvas.className = 'canvas-area';
+
+            if (mode === 'connect') {
+                cBtn.classList.add('active'); cBtn.innerHTML = `<i class="fas fa-hand-pointer"></i> Source...`;
+                canvas.classList.add('connect-cursor');
+            } else if (mode === 'disconnect') {
+                dBtn.classList.add('active-danger');
+                canvas.classList.add('disconnect-mode'); 
+            } else {
+                cBtn.innerHTML = `<i class="fas fa-link"></i> Connect`;
+            }
+        }
+
+        function handleNodeClick(e, id) {
+            if (currentMode !== 'connect') return;
+            e.stopPropagation();
+            const el = document.getElementById(`node-${id}`);
+            
+            if (connectStartNode === null) {
+                connectStartNode = id;
+                el.classList.add('selected');
+                document.getElementById('connectBtn').innerHTML = `<i class="fas fa-bullseye"></i> Target...`;
+            } else {
+                if (connectStartNode !== id && !connections.some(c => c.from === connectStartNode && c.to === id)) {
+                    connections.push({ from: connectStartNode, to: id });
+                    drawConnections();
+                }
+                setMode('none');
+            }
+        }
+
+        function deleteConnection(index) {
+            if (currentMode !== 'disconnect') return;
+            connections.splice(index, 1);
+            drawConnections();
+        }
+
+        // 6. RENDER CONNECTIONS
+        function drawConnections() {
+            svgLayer.innerHTML = ''; 
+            const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+            defs.innerHTML = `<marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#94a3b8"/></marker>`;
+            svgLayer.appendChild(defs);
+
+            connections.forEach((c, index) => {
+                const n1 = nodes.find(n => n.id === c.from);
+                const n2 = nodes.find(n => n.id === c.to);
+                if(n1 && n2) {
+                    const x1 = n1.x + n1.width/2;
+                    const y1 = n1.y + n1.height/2;
+                    const x2 = n2.x + n2.width/2;
+                    const y2 = n2.y + n2.height/2;
+                    
+                    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                    const midY = (y1 + y2) / 2;
+                    const d = `M ${x1} ${y1} L ${x1} ${midY} L ${x2} ${midY} L ${x2} ${y2}`;
+                    
+                    path.setAttribute("d", d);
+                    path.setAttribute("marker-end", "url(#arrowhead)");
+                    path.onclick = () => deleteConnection(index);
+                    svgLayer.appendChild(path);
+                }
+            });
+        }
+
+        // 7. EXPORT
+        function downloadCanvas() {
+            setMode('none');
+            const btn = document.querySelector('.btn-download');
+            btn.innerHTML = 'Processing...';
+            
+            let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
+            if(nodes.length===0) { minX=0; minY=0; maxX=800; maxY=600; }
+            else {
+                nodes.forEach(n => {
+                    if(n.x < minX) minX=n.x;
+                    if(n.y < minY) minY=n.y;
+                    if(n.x+n.width > maxX) maxX=n.x+n.width;
+                    if(n.y+n.height > maxY) maxY=n.y+n.height;
+                });
+            }
+            
+            const pad = 50;
+            const w = (maxX - minX) + pad*2;
+            const h = (maxY - minY) + pad*2;
+            
+            const wrapper = document.createElement('div');
+            wrapper.style.position='absolute'; wrapper.style.left='0'; wrapper.style.top='0';
+            wrapper.style.width=`${w}px`; wrapper.style.height=`${h}px`;
+            wrapper.style.backgroundColor='#ffffff'; wrapper.style.zIndex='-9999';
+            
+            const clone = canvas.cloneNode(true);
+            clone.style.transform = `translate(${-minX + pad}px, ${-minY + pad}px)`;
+            clone.style.width='2000px'; clone.style.height='2000px'; 
+            clone.style.background='transparent';
+            clone.querySelectorAll('.delete-handle, .resize-handle').forEach(e=>e.remove());
+            
+            wrapper.appendChild(clone);
+            document.body.appendChild(wrapper);
+            
+            html2canvas(wrapper).then(c => {
+                const a = document.createElement('a');
+                a.download = 'Flowchart.png'; a.href = c.toDataURL(); a.click();
+                document.body.removeChild(wrapper);
+                btn.innerHTML = '<i class="fas fa-download"></i> Export PNG';
+            });
+        }
+
+        addNode('start');
+    </script>
+
+</body>
+</html>

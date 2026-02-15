@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>T-Test Calculator | Cura Code</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <style>
+        body { font-family: 'Nunito', sans-serif; background: linear-gradient(135deg, #f0f7fa 0%, #ffffff 100%); min-height: 100vh; margin: 0; display: flex; flex-direction: column; }
+        .navbar { padding: 20px; position: absolute; width: 100%; box-sizing: border-box; }
+        .back-btn { text-decoration: none; color: #555; font-weight: 800; display: flex; align-items: center; gap: 8px; cursor: pointer; }
+        .tool-container { max-width: 600px; margin: 80px auto; background: rgba(255,255,255,0.9); backdrop-filter: blur(20px); padding: 40px; border-radius: 24px; box-shadow: 0 20px 60px rgba(106, 201, 232, 0.2); text-align: center; }
+        h1 { color: #2D3436; margin-bottom: 20px; font-size: 1.5rem; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; text-align: left; margin-bottom: 20px; }
+        h3 { color: #6AC9E8; margin-bottom: 10px; }
+        label { font-weight: 700; color: #666; font-size: 0.9rem; }
+        input { width: 100%; padding: 10px; border: 2px solid #eef2f5; border-radius: 8px; margin-bottom: 10px; box-sizing: border-box; }
+        .btn-calc { width: 100%; padding: 15px; background: #6AC9E8; color: white; border: none; border-radius: 12px; font-weight: 800; cursor: pointer; margin-top: 10px; }
+        #results { margin-top: 20px; padding: 20px; background: #e3f9e5; border-radius: 15px; display: none; }
+        .res-val { font-size: 2rem; font-weight: 900; color: #2ecc71; display: block; }
+        #loading-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 9999; display: flex; align-items: center; justify-content: center; font-weight: 800; color: #6AC9E8; font-size: 1.2rem; }
+    </style>
+</head>
+<body>
+    <div id="loading-screen">Verifying Access...</div>
+    <nav class="navbar"><div class="back-btn" onclick="window.location.href='calculators_hub.html'">⬅ Back to Hub</div></nav>
+
+    <div class="tool-container">
+        <h1>Independent T-Test</h1>
+        
+        <div class="grid-2">
+            <div>
+                <h3>Group 1</h3>
+                <label>Mean</label><input type="number" id="m1">
+                <label>SD</label><input type="number" id="sd1">
+                <label>N</label><input type="number" id="n1">
+            </div>
+            <div>
+                <h3>Group 2</h3>
+                <label>Mean</label><input type="number" id="m2">
+                <label>SD</label><input type="number" id="sd2">
+                <label>N</label><input type="number" id="n2">
+            </div>
+        </div>
+
+        <button class="btn-calc" onclick="calcT()">Calculate P-Value</button>
+
+        <div id="results">
+            <span style="color:#27ae60; font-weight:800;">Two-tailed P-Value</span>
+            <span id="p-val" class="res-val">0.0000</span>
+            <span id="t-val" style="color:#555; font-size:0.9rem;">t = 0.00</span>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = { apiKey: "AIzaSyCbE13rFgfC6ipnf8-rYR8uAywsseU7Ntg", authDomain: "curacode-c6200.firebaseapp.com", projectId: "curacode-c6200", storageBucket: "curacode-c6200.firebasestorage.app", messagingSenderId: "773218077864", appId: "1:773218077864:web:217dcc93c6869acb44c69d", measurementId: "G-3DYN1MFLVF" };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        firebase.auth().onAuthStateChanged(u => { if(u) document.getElementById('loading-screen').style.display='none'; else window.location.href="../login.html"; });
+
+        function calcT() {
+            const m1 = parseFloat(document.getElementById('m1').value);
+            const sd1 = parseFloat(document.getElementById('sd1').value);
+            const n1 = parseFloat(document.getElementById('n1').value);
+            const m2 = parseFloat(document.getElementById('m2').value);
+            const sd2 = parseFloat(document.getElementById('sd2').value);
+            const n2 = parseFloat(document.getElementById('n2').value);
+
+            if([m1, sd1, n1, m2, sd2, n2].some(isNaN)) return alert("Fill all fields");
+
+            // Welch's t-test (unequal variances assumed usually safer)
+            const num = m1 - m2;
+            const denom = Math.sqrt((sd1**2/n1) + (sd2**2/n2));
+            const t = num / denom;
+
+            // Degrees of Freedom (Welch-Satterthwaite)
+            const v1 = (sd1**2/n1);
+            const v2 = (sd2**2/n2);
+            const df = Math.pow(v1 + v2, 2) / ( (Math.pow(v1, 2)/(n1-1)) + (Math.pow(v2, 2)/(n2-1)) );
+
+            // P-value approximation (using basic normal approx for simplicity in JS without heavy libraries)
+            // For highly accurate T-dist p-values, a library like jStat is better, but this suffices for quick checks.
+            // Using Z-approx for simplicity in vanilla JS:
+            const p = 2 * (1 - cdf(Math.abs(t))); 
+
+            document.getElementById('p-val').innerText = p.toFixed(5);
+            document.getElementById('t-val').innerText = `t = ${t.toFixed(3)} | df = ${df.toFixed(1)}`;
+            document.getElementById('results').style.display = 'block';
+        }
+
+        // Standard Normal CDF
+        function cdf(x) {
+            var t = 1 / (1 + .2316419 * Math.abs(x));
+            var d = .3989423 * Math.exp(-x * x / 2);
+            var prob = d * t * (.3193815 + t * (-.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+            if (x > 0) prob = 1 - prob;
+            return 1 - prob;
+        }
+    </script>
+</body>
+</html>

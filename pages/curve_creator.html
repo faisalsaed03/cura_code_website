@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Curve Creator | Cura Code</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+
+    <style>
+        :root {
+            --primary: #6AC9E8;
+            --primary-dark: #4FB3D9;
+            --text-main: #2D3436;
+            --bg-body: #F0F4F8;
+            --shadow-soft: 0 10px 40px -10px rgba(106, 201, 232, 0.15);
+            --shadow-card: 0 4px 20px rgba(0,0,0,0.05);
+        }
+
+        * { box-sizing: border-box; outline: none; }
+
+        body {
+            font-family: 'Nunito', sans-serif;
+            margin: 0; padding: 0;
+            background: linear-gradient(180deg, #eef7fb 0%, #ffffff 100%);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex; flex-direction: column;
+        }
+
+        /* NAVBAR */
+        .navbar {
+            padding: 0 30px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            display: flex; justify-content: space-between; align-items: center;
+            height: 60px; z-index: 100;
+        }
+        .logo { font-size: 1.3rem; font-weight: 800; color: var(--primary-dark); display: flex; align-items: center; gap: 10px; }
+        .back-btn { text-decoration: none; color: #636e72; font-weight: 700; transition: 0.2s; }
+        .back-btn:hover { color: var(--primary); }
+
+        /* LAYOUT */
+        .container {
+            max-width: 1400px; margin: 0 auto; padding: 30px;
+            display: grid; grid-template-columns: 350px 1fr; gap: 40px;
+            align-items: start;
+        }
+
+        /* SIDEBAR */
+        .config-panel {
+            background: white; border-radius: 20px; padding: 25px;
+            box-shadow: var(--shadow-card);
+            position: sticky; top: 20px;
+            max-height: calc(100vh - 100px); overflow-y: auto;
+        }
+
+        h2 { font-size: 1.1rem; margin: 0 0 15px 0; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        
+        .control-group { margin-bottom: 20px; }
+        label { display: block; font-weight: 700; font-size: 0.85rem; color: #636e72; margin-bottom: 8px; }
+
+        input, select {
+            width: 100%; padding: 10px; border: 2px solid #eef2f5; border-radius: 10px;
+            font-family: inherit; font-size: 0.9rem; background: #fff; transition: 0.2s;
+        }
+        input:focus, select:focus { border-color: var(--primary); }
+
+        /* SLIDER & TOGGLES */
+        input[type=range] { width: 100%; accent-color: var(--primary); cursor: pointer; }
+        
+        .toggle-row {
+            display: flex; align-items: center; justify-content: space-between;
+            background: #f8fbfe; padding: 10px 15px; border-radius: 12px; margin-bottom: 10px; border: 1px solid #eee;
+        }
+        .toggle-row span { font-weight: 700; font-size: 0.9rem; color: #555; }
+        input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary); }
+
+        /* DATA ROWS */
+        .data-list { max-height: 300px; overflow-y: auto; margin-bottom: 15px; }
+        .data-row {
+            display: flex; gap: 8px; align-items: center; margin-bottom: 8px;
+            background: #fff; padding: 8px; border-radius: 10px; border: 1px solid #eee;
+        }
+        .coord-label { font-size: 0.8rem; font-weight: 800; color: #ccc; }
+        .btn-remove { background: #ffecec; color: #ff7675; border: none; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-weight: bold; }
+
+        .btn-add { width: 100%; padding: 12px; border: 2px dashed #cbd5e0; background: transparent; color: #888; border-radius: 12px; font-weight: 700; cursor: pointer; }
+        .btn-add:hover { border-color: var(--primary); color: var(--primary); }
+
+        .btn-download {
+            width: 100%; padding: 14px; border: none; border-radius: 50px;
+            background: linear-gradient(135deg, #6AC9E8 0%, #4FB3D9 100%); color: white;
+            font-size: 1rem; font-weight: 800; cursor: pointer; margin-top: 20px;
+            box-shadow: 0 10px 20px rgba(106, 201, 232, 0.3);
+        }
+        .btn-download:hover { transform: translateY(-2px); }
+
+        /* PREVIEW AREA */
+        .preview-panel {
+            background: white; border-radius: 24px; padding: 20px;
+            box-shadow: var(--shadow-card);
+            border: 1px solid #fff; 
+            overflow: hidden; /* Contains the scrollable area */
+        }
+
+        #captureArea {
+            background: white; padding: 50px; border-radius: 20px;
+            min-height: 500px;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            overflow-x: auto; /* Allow horizontal scroll for wide charts */
+        }
+
+        #chartTitleDisplay {
+            font-size: 1.8rem; font-weight: 800; color: var(--text-main);
+            margin-bottom: 30px; text-align: center;
+        }
+
+        .chart-container {
+            /* Width set dynamically by slider */
+            height: 400px; position: relative;
+            display: flex; justify-content: center; align-items: center;
+            transition: width 0.3s ease;
+        }
+
+        svg { width: 100%; height: 100%; overflow: visible; }
+        
+        /* Chart Elements */
+        .axis-line { stroke: #dfe6e9; stroke-width: 2; }
+        .grid-line { stroke: #f1f2f6; stroke-width: 1; stroke-dasharray: 4; }
+        .axis-text { font-size: 12px; fill: #636e72; font-family: 'Nunito', sans-serif; font-weight: 600; }
+        
+        .curve-path {
+            fill: none; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round;
+            filter: drop-shadow(0px 5px 15px rgba(106, 201, 232, 0.4));
+            transition: d 0.3s ease;
+        }
+        .curve-area { stroke: none; fill-opacity: 0.2; transition: d 0.3s ease; }
+        
+        .data-point {
+            fill: white; stroke-width: 3; r: 7; transition: all 0.2s; cursor: pointer;
+        }
+        .data-point:hover { r: 10; stroke-width: 4; }
+
+        #loading-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 9999; display: flex; align-items: center; justify-content: center; font-weight: 800; color: var(--primary); }
+    </style>
+</head>
+<body>
+
+    <div id="loading-screen">Verifying Access...</div>
+
+    <nav class="navbar">
+        <div class="logo"><i class="fas fa-bezier-curve"></i> Curve Creator</div>
+        <a href="../dashboard.html" class="back-btn">Exit</a>
+    </nav>
+
+    <div class="container">
+        
+        <div class="config-panel">
+            <h2>Curve Settings</h2>
+            <div class="control-group">
+                <label>Title</label>
+                <input type="text" id="chartTitleInput" value="Trend Projection" oninput="updateChart()">
+            </div>
+            
+            <div class="control-group">
+                <label>Color</label>
+                <input type="color" id="chartColorInput" value="#6AC9E8" onchange="updateChart()" style="height:45px; padding:2px;">
+            </div>
+
+            <div class="control-group">
+                <label>Horizontal Spread (Width)</label>
+                <input type="range" id="widthSlider" min="1" max="3" step="0.1" value="1.5" oninput="updateChart()">
+                <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:#888;">
+                    <span>Normal</span><span>Panoramic</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>Smoothing (Tension)</label>
+                <input type="range" id="tensionSlider" min="0" max="0.5" step="0.05" value="0.35" oninput="updateChart()">
+                <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:#888;">
+                    <span>Sharp</span><span>Smooth</span>
+                </div>
+            </div>
+
+            <div class="toggle-row">
+                <span>Fill Area</span>
+                <input type="checkbox" id="fillCheck" checked onchange="updateChart()">
+            </div>
+            <div class="toggle-row">
+                <span>Show Dots</span>
+                <input type="checkbox" id="dotsCheck" checked onchange="updateChart()">
+            </div>
+
+            <h2>Coordinates (X / Y)</h2>
+            <div id="dataList" class="data-list"></div>
+            <button class="btn-add" onclick="addPoint()">+ Add Point</button>
+
+            <button id="dlBtn" class="btn-download" onclick="downloadImage()">Download Curve</button>
+        </div>
+
+        <div class="preview-panel">
+            <div id="captureArea">
+                <div id="chartTitleDisplay">Trend Projection</div>
+                <div class="chart-container" id="chartContainer"></div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // 1. FIREBASE AUTH
+        const firebaseConfig = { apiKey: "AIzaSyCbE13rFgfC6ipnf8-rYR8uAywsseU7Ntg", authDomain: "curacode-c6200.firebaseapp.com", projectId: "curacode-c6200", appId: "1:773218077864:web:217dcc93c6869acb44c69d" };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        firebase.auth().onAuthStateChanged(u => { 
+            if(u) document.getElementById('loading-screen').style.display='none'; 
+            else window.location.href="../login.html"; 
+        });
+
+        // 2. DATA LOGIC
+        let pointCount = 0;
+
+        function addPoint(x = "", y = "") {
+            pointCount++;
+            const container = document.getElementById('dataList');
+            
+            // Auto increment X
+            let nextX = x;
+            if (x === "") {
+                const inputs = document.querySelectorAll('.coord-x');
+                nextX = inputs.length > 0 ? parseInt(inputs[inputs.length - 1].value) + 1 : 1;
+            }
+            let nextY = y !== "" ? y : Math.floor(Math.random() * 50) + 20;
+
+            const div = document.createElement('div');
+            div.className = 'data-row';
+            div.innerHTML = `
+                <span class="coord-label">X</span>
+                <input type="number" class="coord-x" value="${nextX}" oninput="updateChart()">
+                <span class="coord-label">Y</span>
+                <input type="number" class="coord-y" value="${nextY}" oninput="updateChart()">
+                <button class="btn-remove" onclick="removeRow(this)">×</button>
+            `;
+            container.appendChild(div);
+            updateChart();
+        }
+
+        function removeRow(btn) {
+            btn.parentElement.remove();
+            updateChart();
+        }
+
+        function getData() {
+            const rows = document.querySelectorAll('.data-row');
+            const data = [];
+            rows.forEach(row => {
+                const x = parseFloat(row.querySelector('.coord-x').value);
+                const y = parseFloat(row.querySelector('.coord-y').value);
+                if (!isNaN(x) && !isNaN(y)) data.push({ x, y });
+            });
+            return data.sort((a, b) => a.x - b.x);
+        }
+
+        // 3. RENDER LOGIC (SPLINE)
+        function updateChart() {
+            const title = document.getElementById('chartTitleInput').value;
+            document.getElementById('chartTitleDisplay').innerText = title;
+            
+            const color = document.getElementById('chartColorInput').value;
+            const tension = parseFloat(document.getElementById('tensionSlider').value);
+            const widthScale = parseFloat(document.getElementById('widthSlider').value); // New Spread Logic
+            const fill = document.getElementById('fillCheck').checked;
+            const showDots = document.getElementById('dotsCheck').checked;
+            
+            const data = getData();
+            const container = document.getElementById('chartContainer');
+            
+            if (data.length < 2) {
+                container.innerHTML = '<p style="color:#ccc; margin-top:200px;">Add points to see the curve.</p>';
+                return;
+            }
+
+            // DYNAMIC WIDTH LOGIC
+            const baseW = 800; 
+            const w = baseW * widthScale; // Multiplied width
+            container.style.width = w + 'px'; // Apply width to DOM
+            
+            const h = container.offsetHeight || 400;
+            const pad = 50;
+
+            const xMax = Math.max(...data.map(d => d.x));
+            const xMin = Math.min(...data.map(d => d.x));
+            const yMax = Math.max(...data.map(d => d.y)) * 1.1; 
+            const yMin = 0;
+
+            const getX = (val) => pad + ((val - xMin) / (xMax - xMin)) * (w - (pad * 2));
+            const getY = (val) => (h - pad) - ((val - yMin) / (yMax - yMin)) * (h - (pad * 2));
+
+            let svg = `<svg viewBox="0 0 ${w} ${h}">`;
+
+            // Grid
+            svg += `<line x1="${pad}" y1="${pad}" x2="${pad}" y2="${h-pad}" class="axis-line" />`;
+            svg += `<line x1="${pad}" y1="${h-pad}" x2="${w-pad}" y2="${h-pad}" class="axis-line" />`;
+            
+            for(let i=1; i<=5; i++) {
+                const yPos = (h-pad) - ((h-(pad*2))/5)*i;
+                svg += `<line x1="${pad}" y1="${yPos}" x2="${w-pad}" y2="${yPos}" class="grid-line" />`;
+            }
+
+            // Curve
+            const points = data.map(d => ({ x: getX(d.x), y: getY(d.y) }));
+            const pathD = svgPath(points, tension);
+
+            if (fill) {
+                const areaPath = `${pathD} L ${points[points.length-1].x} ${h-pad} L ${points[0].x} ${h-pad} Z`;
+                svg += `<path d="${areaPath}" class="curve-area" fill="${color}"></path>`;
+            }
+
+            svg += `<path d="${pathD}" class="curve-path" stroke="${color}"></path>`;
+
+            if (showDots) {
+                data.forEach((d, i) => {
+                    const cx = getX(d.x);
+                    const cy = getY(d.y);
+                    svg += `<circle cx="${cx}" cy="${cy}" class="data-point" stroke="${color}"></circle>`;
+                    svg += `<text x="${cx}" y="${h-pad+20}" text-anchor="middle" class="axis-text">${d.x}</text>`;
+                    svg += `<text x="${cx}" y="${cy-15}" text-anchor="middle" class="axis-text" style="fill:${color}; font-weight:800;">${d.y}</text>`;
+                });
+            }
+
+            svg += `</svg>`;
+            container.innerHTML = svg;
+        }
+
+        // Catmull-Rom Spline to Bezier
+        function svgPath(points, tension) {
+            if (points.length === 0) return "";
+            if (points.length === 1) return `M ${points[0].x} ${points[0].y}`;
+
+            let path = `M ${points[0].x} ${points[0].y}`;
+
+            for (let i = 0; i < points.length - 1; i++) {
+                const p0 = points[i - 1] || points[i];
+                const p1 = points[i];
+                const p2 = points[i + 1];
+                const p3 = points[i + 2] || p2;
+
+                const cp1x = p1.x + (p2.x - p0.x) * tension;
+                const cp1y = p1.y + (p2.y - p0.y) * tension;
+                const cp2x = p2.x - (p3.x - p1.x) * tension;
+                const cp2y = p2.y - (p3.y - p1.y) * tension;
+
+                path += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`;
+            }
+            return path;
+        }
+
+        // 4. DOWNLOAD
+        function downloadImage() {
+            const btn = document.getElementById('dlBtn');
+            const originalText = btn.innerText;
+            btn.innerText = "Processing...";
+            
+            const source = document.getElementById('captureArea');
+            const wrapper = document.createElement('div');
+            
+            // Get current dynamic width
+            const currentWidth = document.getElementById('chartContainer').offsetWidth;
+            const captureWidth = Math.max(1000, currentWidth + 100);
+
+            wrapper.style.position = 'absolute'; wrapper.style.top = '-9999px'; wrapper.style.left = '0';
+            wrapper.style.width = captureWidth + 'px'; 
+            wrapper.style.backgroundColor = '#ffffff'; wrapper.style.padding = '60px';
+            
+            const clone = source.cloneNode(true);
+            // Ensure clone maintains dynamic width
+            clone.querySelector('#chartContainer').style.width = currentWidth + 'px';
+            
+            wrapper.appendChild(clone);
+            document.body.appendChild(wrapper);
+
+            html2canvas(wrapper, { scale: 3, backgroundColor: "#ffffff" }).then(canvas => {
+                const a = document.createElement('a');
+                a.download = 'cura-curve.png';
+                a.href = canvas.toDataURL('image/png');
+                a.click();
+                document.body.removeChild(wrapper);
+                btn.innerText = originalText;
+            });
+        }
+
+        // Init
+        addPoint(1, 10);
+        addPoint(2, 45);
+        addPoint(3, 30);
+        addPoint(4, 70);
+        window.addEventListener('resize', updateChart);
+    </script>
+
+</body>
+</html>

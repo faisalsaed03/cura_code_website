@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Cohen's d Calculator | Cura Code</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <link rel="stylesheet" href="../assets/style.css"> <style>
+        /* Shared Styles */
+        body { font-family: 'Nunito', sans-serif; background: linear-gradient(135deg, #f0f7fa 0%, #ffffff 100%); min-height: 100vh; margin: 0; display: flex; flex-direction: column; }
+        .navbar { padding: 20px; position: absolute; width: 100%; box-sizing: border-box; }
+        .back-btn { text-decoration: none; color: #555; font-weight: 800; display: flex; align-items: center; gap: 8px; cursor: pointer; }
+        .tool-container { max-width: 600px; margin: 80px auto; background: rgba(255,255,255,0.9); backdrop-filter: blur(20px); padding: 40px; border-radius: 24px; box-shadow: 0 20px 60px rgba(106, 201, 232, 0.2); text-align: center; }
+        h1 { color: #2D3436; margin-bottom: 20px; font-size: 1.5rem; }
+        input { width: 100%; padding: 10px; border: 2px solid #eef2f5; border-radius: 8px; margin-top: 5px; box-sizing: border-box; }
+        .btn-calc { width: 100%; padding: 15px; background: #6AC9E8; color: white; border: none; border-radius: 12px; font-weight: 800; cursor: pointer; margin-top: 20px; }
+        #results { margin-top: 20px; padding: 20px; background: #e3f9e5; border-radius: 15px; display: none; }
+        .res-val { font-size: 2rem; font-weight: 900; color: #2ecc71; display: block; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; text-align: left; }
+    </style>
+</head>
+<body>
+    <div id="loading-screen" style="position:fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:9999; display:flex; align-items:center; justify-content:center; color:#6AC9E8; font-weight:800;">Verifying Access...</div>
+    <nav class="navbar"><div class="back-btn" onclick="window.location.href='calculators_hub.html'">⬅ Back to Hub</div></nav>
+
+    <div class="tool-container">
+        <h1>Cohen's d (Effect Size)</h1>
+        
+        <div class="grid-2">
+            <div>
+                <h3>Group 1</h3>
+                <label>Mean</label><input type="number" id="m1" placeholder="Mean 1">
+                <label>SD</label><input type="number" id="sd1" placeholder="SD 1">
+                <label>N</label><input type="number" id="n1" placeholder="N 1">
+            </div>
+            <div>
+                <h3>Group 2</h3>
+                <label>Mean</label><input type="number" id="m2" placeholder="Mean 2">
+                <label>SD</label><input type="number" id="sd2" placeholder="SD 2">
+                <label>N</label><input type="number" id="n2" placeholder="N 2">
+            </div>
+        </div>
+
+        <button class="btn-calc" onclick="calculateD()">Calculate Effect Size</button>
+
+        <div id="results">
+            <span style="color:#27ae60; font-weight:800;">Cohen's d</span>
+            <span id="res-d" class="res-val">0.00</span>
+            <span id="interp" style="color:#555; font-size:0.9rem;"></span>
+        </div>
+    </div>
+
+    <script>
+        // 1. Config
+        const firebaseConfig = { apiKey: "AIzaSyCbE13rFgfC6ipnf8-rYR8uAywsseU7Ntg", authDomain: "curacode-c6200.firebaseapp.com", projectId: "curacode-c6200", storageBucket: "curacode-c6200.firebasestorage.app", messagingSenderId: "773218077864", appId: "1:773218077864:web:217dcc93c6869acb44c69d" };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        firebase.auth().onAuthStateChanged(user => { if(user) document.getElementById('loading-screen').style.display='none'; else window.location.href="../login.html"; });
+
+        function calculateD() {
+            const m1 = parseFloat(document.getElementById('m1').value);
+            const sd1 = parseFloat(document.getElementById('sd1').value);
+            const n1 = parseFloat(document.getElementById('n1').value);
+            const m2 = parseFloat(document.getElementById('m2').value);
+            const sd2 = parseFloat(document.getElementById('sd2').value);
+            const n2 = parseFloat(document.getElementById('n2').value);
+
+            if([m1, sd1, n1, m2, sd2, n2].some(isNaN)) return alert("Fill all fields");
+
+            // Pooled SD formula
+            const pooledVar = ((n1 - 1) * sd1**2 + (n2 - 1) * sd2**2) / (n1 + n2 - 2);
+            const pooledSD = Math.sqrt(pooledVar);
+            const d = (m1 - m2) / pooledSD;
+
+            let text = "Effect: ";
+            const absD = Math.abs(d);
+            if(absD < 0.2) text += "Negligible";
+            else if(absD < 0.5) text += "Small";
+            else if(absD < 0.8) text += "Medium";
+            else text += "Large";
+
+            document.getElementById('res-d').innerText = d.toFixed(3);
+            document.getElementById('interp').innerText = text;
+            document.getElementById('results').style.display = 'block';
+        }
+    </script>
+</body>
+</html>

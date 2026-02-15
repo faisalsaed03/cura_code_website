@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Merge & Split PDF | Cura Code</title>
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/downloadjs/1.4.8/download.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        body { font-family: 'Nunito', sans-serif; background: #f4f7fa; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding-top: 50px; color: #2D3436; }
+        
+        .box { 
+            background: white; padding: 40px; border-radius: 20px; width: 600px; 
+            text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.08); 
+        }
+        
+        h1 { margin-top: 0; color: #2D3436; font-size: 1.8rem; }
+        p.sub { color: #888; font-size: 0.95rem; margin-bottom: 30px; }
+        
+        .drop-zone {
+            border: 2px dashed #cbd5e0; padding: 40px; border-radius: 15px;
+            margin-bottom: 20px; color: #888; cursor: pointer; transition: 0.2s;
+            background: #fdfdfd;
+        }
+        .drop-zone:hover { border-color: #6AC9E8; background: #f0f9ff; color: #6AC9E8; }
+        .drop-zone i { font-size: 2rem; margin-bottom: 10px; display: block; }
+        
+        .file-list { text-align: left; margin-bottom: 20px; }
+        .file-item { 
+            padding: 12px; background: #f8f9fa; margin-bottom: 8px; 
+            border-radius: 8px; font-size: 0.9rem; border: 1px solid #eee;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .file-item i { color: #ff7675; }
+
+        /* Split Controls */
+        .split-controls {
+            text-align: left; background: #eef2f5; padding: 15px; 
+            border-radius: 10px; margin-bottom: 20px; display: none;
+        }
+        .split-controls label { font-weight: 800; font-size: 0.85rem; color: #555; display: block; margin-bottom: 5px; }
+        .split-controls input {
+            width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;
+            box-sizing: border-box; font-family: inherit;
+        }
+        .hint { font-size: 0.75rem; color: #888; margin-top: 5px; display: block; }
+
+        /* Buttons */
+        .btn-group { display: flex; gap: 10px; justify-content: center; }
+        .btn { 
+            padding: 12px 25px; border: none; border-radius: 8px; 
+            font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 8px;
+            transition: 0.2s; font-size: 0.95rem;
+        }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        .btn-merge { background: #6AC9E8; color: white; }
+        .btn-merge:hover { background: #4FB3D9; }
+        
+        .btn-split { background: #ff7675; color: white; }
+        .btn-split:hover { background: #e66767; }
+
+        .back-link { margin-bottom: 20px; text-decoration: none; color: #888; font-weight: 700; align-self: flex-start; margin-left: max(20px, calc(50% - 300px)); }
+    </style>
+</head>
+<body>
+
+    <a href="pdf_hub.html" class="back-link">← Back to PDF Tools</a>
+
+    <div class="box">
+        <h1>Merge & Split PDFs</h1>
+        <p class="sub">Combine multiple files into one, or extract specific pages.</p>
+
+        <div class="drop-zone" onclick="document.getElementById('fileIn').click()">
+            <i class="fas fa-cloud-upload-alt"></i>
+            <span id="dropText">Click to select PDF files</span>
+            <input type="file" id="fileIn" multiple accept="application/pdf" style="display:none" onchange="handleFiles()">
+        </div>
+
+        <div class="file-list" id="fileList"></div>
+
+        <div id="splitSection" class="split-controls">
+            <label>Pages to Extract (from first file):</label>
+            <input type="text" id="pageRange" placeholder="e.g. 1, 3-5, 8">
+            <span class="hint">Enter page numbers separated by commas or ranges (e.g. 1-3).</span>
+        </div>
+
+        <div id="actions" class="btn-group" style="display:none;">
+            <button class="btn btn-merge" onclick="mergePDFs()">
+                <i class="fas fa-layer-group"></i> Merge All
+            </button>
+            <button class="btn btn-split" onclick="splitPDF()">
+                <i class="fas fa-cut"></i> Extract Pages
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let filesArray = [];
+
+        // 1. Handle File Upload
+        function handleFiles() {
+            const input = document.getElementById('fileIn');
+            // Add new files to existing array (or replace if you prefer)
+            filesArray = Array.from(input.files);
+            
+            renderFileList();
+            updateUI();
+        }
+
+        function renderFileList() {
+            const list = document.getElementById('fileList');
+            list.innerHTML = "";
+            filesArray.forEach((f, i) => {
+                list.innerHTML += `
+                    <div class="file-item">
+                        <i class="fas fa-file-pdf"></i> 
+                        <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${f.name}</span>
+                        <span style="font-size:0.8rem; color:#aaa;">(${(f.size/1024/1024).toFixed(2)} MB)</span>
+                    </div>`;
+            });
+        }
+
+        function updateUI() {
+            const actions = document.getElementById('actions');
+            const splitSec = document.getElementById('splitSection');
+            
+            if(filesArray.length > 0) {
+                actions.style.display = 'flex';
+                // Only show split options if exactly 1 file is selected (simplifies logic)
+                // If multiple, user probably wants to Merge.
+                if(filesArray.length === 1) {
+                    splitSec.style.display = 'block';
+                } else {
+                    splitSec.style.display = 'none';
+                }
+            } else {
+                actions.style.display = 'none';
+                splitSec.style.display = 'none';
+            }
+        }
+
+        // 2. MERGE FUNCTION
+        async function mergePDFs() {
+            if(filesArray.length < 2) return alert("Select at least 2 files to merge.");
+            
+            const { PDFDocument } = PDFLib;
+            const mergedPdf = await PDFDocument.create();
+
+            for (const file of filesArray) {
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await PDFDocument.load(arrayBuffer);
+                const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+                copiedPages.forEach((page) => mergedPdf.addPage(page));
+            }
+
+            const pdfBytes = await mergedPdf.save();
+            download(pdfBytes, "cura_merged.pdf", "application/pdf");
+        }
+
+        // 3. SPLIT / EXTRACT FUNCTION
+        async function splitPDF() {
+            if(filesArray.length === 0) return;
+            
+            const rangeStr = document.getElementById('pageRange').value.trim();
+            if(!rangeStr) return alert("Please enter page numbers to extract (e.g. 1, 3-5)");
+
+            const file = filesArray[0]; // Always split the first file in list
+            const arrayBuffer = await file.arrayBuffer();
+            
+            const { PDFDocument } = PDFLib;
+            const pdf = await PDFDocument.load(arrayBuffer);
+            const totalPages = pdf.getPageCount();
+
+            // Parse the input string into an array of indices
+            const indices = parsePageRange(rangeStr, totalPages);
+            
+            if(indices.length === 0) return alert("Invalid page range.");
+
+            // Create new PDF
+            const newPdf = await PDFDocument.create();
+            const copiedPages = await newPdf.copyPages(pdf, indices);
+            
+            copiedPages.forEach(page => newPdf.addPage(page));
+            
+            const pdfBytes = await newPdf.save();
+            download(pdfBytes, `extracted_pages_${file.name}`, "application/pdf");
+        }
+
+        // Helper: Logic to convert "1, 3-5" into [0, 2, 3, 4]
+        function parsePageRange(str, maxPages) {
+            const pages = new Set();
+            const parts = str.split(',');
+
+            parts.forEach(part => {
+                const p = part.trim();
+                if(p.includes('-')) {
+                    // Range (e.g., 3-5)
+                    const [start, end] = p.split('-').map(n => parseInt(n));
+                    if(!isNaN(start) && !isNaN(end)) {
+                        for(let i = start; i <= end; i++) {
+                            if(i > 0 && i <= maxPages) pages.add(i - 1); // 0-based index
+                        }
+                    }
+                } else {
+                    // Single number
+                    const num = parseInt(p);
+                    if(!isNaN(num) && num > 0 && num <= maxPages) {
+                        pages.add(num - 1);
+                    }
+                }
+            });
+
+            return Array.from(pages).sort((a, b) => a - b);
+        }
+    </script>
+
+</body>
+</html>

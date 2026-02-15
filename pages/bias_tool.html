@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Risk of Bias Tool | Cura Code</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+
+    <style>
+        :root {
+            --primary: #6AC9E8;
+            --primary-dark: #4FB3D9;
+            --text-main: #2D3436;
+            --bg-body: #f4f9fc;
+            --shadow-card: 0 4px 20px rgba(0,0,0,0.05);
+
+            /* RoB Colors */
+            --rob-low: #2ecc71;       /* Green */
+            --rob-some: #f1c40f;      /* Yellow */
+            --rob-high: #e74c3c;      /* Red */
+            --rob-crit: #800000;      /* Dark Red */
+            --rob-ni: #b2bec3;        /* Grey */
+        }
+
+        * { box-sizing: border-box; outline: none; }
+
+        body {
+            font-family: 'Nunito', sans-serif;
+            margin: 0; padding: 0;
+            background: var(--bg-body);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex; flex-direction: column;
+        }
+
+        /* NAVBAR */
+        .navbar {
+            padding: 15px 40px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            display: flex; justify-content: space-between; align-items: center;
+            position: sticky; top: 0; z-index: 1000;
+        }
+        .logo { font-size: 1.3rem; font-weight: 800; color: var(--primary-dark); display: flex; align-items: center; gap: 10px; }
+        .back-btn { text-decoration: none; color: #636e72; font-weight: 700; transition: 0.2s; font-size: 0.9rem; }
+        .back-btn:hover { color: var(--primary); }
+
+        /* LAYOUT */
+        .container {
+            max-width: 1600px; margin: 0 auto; width: 100%;
+            padding: 30px;
+            display: grid; grid-template-columns: 380px 1fr; gap: 30px;
+            align-items: start;
+        }
+
+        @media (max-width: 1000px) {
+            .container { grid-template-columns: 1fr; }
+            .navbar { padding: 15px 20px; }
+        }
+
+        /* SIDEBAR */
+        .config-panel {
+            background: white; border-radius: 20px; padding: 25px;
+            box-shadow: var(--shadow-card);
+            position: sticky; top: 90px;
+            max-height: calc(100vh - 120px); overflow-y: auto;
+        }
+
+        h2 { font-size: 1.1rem; margin: 0 0 15px 0; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px; color: #333; }
+        label { display: block; font-weight: 700; font-size: 0.85rem; color: #636e72; margin-bottom: 5px; }
+
+        select, input {
+            width: 100%; padding: 10px; border: 2px solid #eef2f5; border-radius: 10px;
+            font-family: inherit; font-size: 0.9rem; background: #fff; transition: 0.2s;
+        }
+        select:focus, input:focus { border-color: var(--primary); }
+
+        /* STUDY LIST */
+        .study-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
+        
+        .study-card {
+            background: #fff; border: 1px solid #eee; border-radius: 12px; padding: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.02); transition: 0.2s; position: relative;
+        }
+        .study-card:hover { border-color: var(--primary); box-shadow: 0 5px 15px rgba(106, 201, 232, 0.1); }
+
+        .study-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .study-title { font-weight: 800; font-size: 0.8rem; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; }
+        
+        .btn-del {
+            background: #fff0f0; color: #ff7675; border: none; width: 24px; height: 24px;
+            border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+        }
+        .btn-del:hover { background: #ff7675; color: white; }
+
+        .domains-grid {
+            display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 10px;
+        }
+        .domain-item { display: flex; flex-direction: column; gap: 4px; }
+        .domain-item label { font-size: 0.75rem; margin: 0; white-space: normal; line-height: 1.3; }
+        
+        .domain-select { padding: 6px; font-size: 0.8rem; font-weight: 700; border-radius: 6px; cursor: pointer; }
+
+        .btn-add {
+            width: 100%; padding: 12px; border: 2px dashed #cbd5e0; background: transparent;
+            color: #888; border-radius: 12px; font-weight: 700; cursor: pointer; transition: 0.2s;
+        }
+        .btn-add:hover { border-color: var(--primary); color: var(--primary); background: #f0f9ff; }
+
+        /* PREVIEW AREA */
+        .preview-area { display: flex; flex-direction: column; gap: 30px; }
+
+        .chart-card {
+            background: white; border-radius: 20px; padding: 30px;
+            box-shadow: var(--shadow-card);
+        }
+        .chart-header-row {
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;
+            border-bottom: 1px solid #eee; padding-bottom: 15px;
+        }
+        .chart-header-row h3 { margin: 0; font-size: 1.1rem; color: #2d3436; font-weight: 800; }
+
+        .btn-dl {
+            background: linear-gradient(135deg, #6AC9E8 0%, #4FB3D9 100%); color: white; border: none;
+            padding: 8px 20px; border-radius: 30px; font-weight: 700; font-size: 0.85rem;
+            cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.2s;
+        }
+        .btn-dl:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(106, 201, 232, 0.4); }
+
+        /* --- MODERN TABLE DESIGN --- */
+        #traffic-area { background: white; padding: 10px; border-radius: 10px; }
+        
+        .traffic-container { overflow-x: auto; padding-bottom: 20px; }
+        
+        .traffic-table { 
+            width: 100%; 
+            min-width: 700px;
+            border-spacing: 0 8px; 
+            border-collapse: separate; 
+        }
+        
+        /* Headers */
+        .traffic-table th {
+            text-align: center; padding: 15px 5px; 
+            vertical-align: bottom; height: 160px; 
+            position: relative;
+        }
+        
+        /* Rotated Header Text */
+        .traffic-table th div.rotate-wrapper {
+            transform: rotate(-90deg);
+            transform-origin: center bottom;
+            white-space: nowrap;
+            width: 30px;
+            margin: 0 auto;
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            margin-left: -15px; 
+            text-align: left;
+            font-size: 0.75rem; font-weight: 700; color: #636e72;
+        }
+
+        .traffic-table .study-col-head {
+            vertical-align: bottom; text-align: left; padding: 10px 20px;
+            font-size: 0.9rem; font-weight: 800; color: #2d3436;
+        }
+
+        /* Data Rows */
+        .traffic-table tbody tr {
+            box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+            transition: 0.2s;
+            background: #fff;
+        }
+        .traffic-table tbody tr:hover { transform: scale(1.005); box-shadow: 0 5px 15px rgba(0,0,0,0.08); }
+
+        .traffic-table td { 
+            padding: 12px; 
+            text-align: center; 
+            border-top: 1px solid #f0f0f0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .traffic-table td:first-child {
+            border-left: 1px solid #f0f0f0;
+            border-top-left-radius: 12px;
+            border-bottom-left-radius: 12px;
+            text-align: left; padding-left: 20px;
+            font-weight: 700; color: #2d3436; font-size: 0.9rem;
+        }
+        
+        .traffic-table td:last-child {
+            border-right: 1px solid #f0f0f0;
+            border-top-right-radius: 12px;
+            border-bottom-right-radius: 12px;
+        }
+
+        /* Traffic Lights */
+        .circle {
+            width: 28px; height: 28px; border-radius: 50%; display: inline-flex;
+            align-items: center; justify-content: center; color: white; font-weight: 900; font-size: 1rem;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+            transition: 0.2s;
+        }
+        .circle:hover { transform: scale(1.15); }
+
+        /* SUMMARY BAR */
+        .summary-chart { display: flex; flex-direction: column; gap: 15px; margin-top: 20px; }
+        .summary-row { display: flex; align-items: center; gap: 15px; }
+        .summary-label { width: 250px; text-align: right; font-size: 0.8rem; font-weight: 700; color: #555; }
+        .summary-track { flex: 1; height: 35px; display: flex; border-radius: 8px; overflow: hidden; background: #eee; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .summary-bar { height: 100%; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.75rem; font-weight: 800; text-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+
+        .legend { display: flex; justify-content: center; gap: 20px; margin-bottom: 20px; flex-wrap: wrap; background: #f8fbfe; padding: 15px; border-radius: 12px; }
+        .legend-item { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 700; color: #555; }
+        .legend-dot { width: 14px; height: 14px; border-radius: 4px; }
+
+        #loading-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 9999; display: flex; align-items: center; justify-content: center; font-weight: 800; color: var(--primary); }
+    </style>
+</head>
+<body>
+
+    <div id="loading-screen">Verifying Access...</div>
+
+    <nav class="navbar">
+        <div class="logo"><i class="fas fa-traffic-light"></i> Risk of Bias Tool</div>
+        <a href="../dashboard.html" class="back-btn">Exit</a>
+    </nav>
+
+    <div class="container">
+        
+        <div class="config-panel">
+            <h2>Configuration</h2>
+            <div class="tool-select-wrapper" style="background:#f8fbfe; padding:15px; border-radius:12px; margin-bottom:20px;">
+                <label>Assessment Framework</label>
+                <select id="toolSelector" onchange="changeTool()">
+                    <option value="rob2">RoB 2 (Randomized Trials)</option>
+                    <option value="robins_i">ROBINS-I (Interventions)</option>
+                    <option value="robins_e">ROBINS-E (Exposures)</option>
+                </select>
+            </div>
+
+            <h2>Included Studies</h2>
+            <div id="studyContainer" class="study-list"></div>
+            <button class="btn-add" onclick="addStudy()">+ Add New Study</button>
+        </div>
+
+        <div class="preview-area">
+            
+            <div class="chart-card">
+                <div class="chart-header-row">
+                    <h3>Traffic Light Plot</h3>
+                    <button class="btn-dl" onclick="downloadChart('traffic-area', 'Traffic_Light_Plot')">
+                        <i class="fas fa-download"></i> PNG
+                    </button>
+                </div>
+                
+                <div id="traffic-area">
+                    <div id="traffic-legend" class="legend"></div>
+                    <div class="traffic-container">
+                        <table class="traffic-table">
+                            <thead id="traffic-head"></thead>
+                            <tbody id="traffic-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chart-card">
+                <div class="chart-header-row">
+                    <h3>Weighted Summary Plot</h3>
+                    <button class="btn-dl" onclick="downloadChart('summary-area', 'Summary_Plot')">
+                        <i class="fas fa-download"></i> PNG
+                    </button>
+                </div>
+
+                <div id="summary-area">
+                    <div id="summary-legend" class="legend"></div>
+                    <div id="summary-chart" class="summary-chart"></div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // 1. FIREBASE AUTH
+        const firebaseConfig = { apiKey: "AIzaSyCbE13rFgfC6ipnf8-rYR8uAywsseU7Ntg", authDomain: "curacode-c6200.firebaseapp.com", projectId: "curacode-c6200", appId: "1:773218077864:web:217dcc93c6869acb44c69d" };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        firebase.auth().onAuthStateChanged(u => { 
+            if(u) document.getElementById('loading-screen').style.display='none'; 
+            else window.location.href="../login.html"; 
+        });
+
+        // 2. CONFIGURATION
+        const toolsConfig = {
+            rob2: {
+                name: "RoB 2",
+                domains: ["Randomization process", "Deviations from intended interventions", "Missing outcome data", "Measurement of the outcome", "Selection of the reported result", "Overall Risk of Bias"],
+                options: [
+                    { val: "low", label: "Low Risk", color: "var(--rob-low)", symbol: "+" },
+                    { val: "some", label: "Some Concerns", color: "var(--rob-some)", symbol: "!" },
+                    { val: "high", label: "High Risk", color: "var(--rob-high)", symbol: "-" }
+                ]
+            },
+            robins_i: {
+                name: "ROBINS-I",
+                domains: ["Confounding", "Selection of participants", "Classification of interventions", "Deviations from intended interventions", "Missing data", "Outcome measurement", "Reported result", "Overall Risk of Bias"],
+                options: [
+                    { val: "low", label: "Low", color: "var(--rob-low)", symbol: "+" },
+                    { val: "some", label: "Moderate", color: "var(--rob-some)", symbol: "!" },
+                    { val: "high", label: "Serious", color: "var(--rob-high)", symbol: "-" },
+                    { val: "crit", label: "Critical", color: "var(--rob-crit)", symbol: "x" },
+                    { val: "ni", label: "No Info", color: "var(--rob-ni)", symbol: "?" }
+                ]
+            },
+            robins_e: {
+                name: "ROBINS-E",
+                domains: ["Confounding", "Measurement of the Exposure", "Selection of participants", "Post-exposure interventions", "Missing data", "Outcome measurement", "Reported result", "Overall Risk of Bias"],
+                options: [
+                    { val: "low", label: "Low", color: "var(--rob-low)", symbol: "+" },
+                    { val: "some", label: "Moderate", color: "var(--rob-some)", symbol: "!" },
+                    { val: "high", label: "Serious", color: "var(--rob-high)", symbol: "-" },
+                    { val: "crit", label: "Critical", color: "var(--rob-crit)", symbol: "x" },
+                    { val: "ni", label: "No Info", color: "var(--rob-ni)", symbol: "?" }
+                ]
+            }
+        };
+
+        let currentTool = "rob2";
+        let studyCount = 0;
+
+        // 3. LOGIC
+        function changeTool() {
+            const newVal = document.getElementById('toolSelector').value;
+            if(newVal !== currentTool) {
+                if(confirm("Switching tools will reset your current data. Continue?")) {
+                    currentTool = newVal;
+                    document.getElementById('studyContainer').innerHTML = "";
+                    studyCount = 0;
+                    addStudy("Study 1");
+                    generateVisuals();
+                } else {
+                    document.getElementById('toolSelector').value = currentTool;
+                }
+            }
+        }
+
+        function addStudy(name = "") {
+            studyCount++;
+            const container = document.getElementById('studyContainer');
+            const config = toolsConfig[currentTool];
+            
+            const div = document.createElement('div');
+            div.className = 'study-card';
+            div.id = `study-${studyCount}`;
+
+            let optionsHtml = config.options.map(opt => `<option value="${opt.val}">${opt.label}</option>`).join('');
+            let gridHtml = config.domains.map((d, i) => `
+                <div class="domain-item">
+                    <label>${d}</label>
+                    <select class="domain-select" onchange="generateVisuals()">${optionsHtml}</select>
+                </div>
+            `).join('');
+
+            div.innerHTML = `
+                <div class="study-header">
+                    <span class="study-title">Study #${studyCount}</span>
+                    <button class="btn-del" onclick="this.closest('.study-card').remove(); generateVisuals();">×</button>
+                </div>
+                <input type="text" class="study-name" value="${name || 'Author, Year'}" oninput="generateVisuals()">
+                <div class="domains-grid">${gridHtml}</div>
+            `;
+            container.appendChild(div);
+            generateVisuals();
+        }
+
+        function generateVisuals() {
+            const config = toolsConfig[currentTool];
+            const studies = [];
+            
+            document.querySelectorAll('.study-card').forEach(card => {
+                const name = card.querySelector('.study-name').value;
+                const selects = card.querySelectorAll('select');
+                const risks = Array.from(selects).map(s => s.value);
+                studies.push({ name, risks });
+            });
+
+            if(studies.length === 0) {
+                document.getElementById('traffic-body').innerHTML = "<tr><td colspan='100' style='padding:20px; color:#999;'>No studies added yet.</td></tr>";
+                document.getElementById('summary-chart').innerHTML = "";
+                return;
+            }
+
+            renderTrafficLight(studies, config);
+            renderSummary(studies, config);
+        }
+
+        function renderTrafficLight(studies, config) {
+            const thead = document.getElementById('traffic-head');
+            const tbody = document.getElementById('traffic-body');
+            const legend = document.getElementById('traffic-legend');
+
+            // Header
+            let headHtml = `<tr><th class="study-col-head">Study ID</th>`;
+            config.domains.forEach(d => headHtml += `<th><div class="rotate-wrapper">${d}</div></th>`);
+            headHtml += `</tr>`;
+            thead.innerHTML = headHtml;
+
+            // Body
+            let bodyHtml = "";
+            studies.forEach((s, idx) => {
+                // Alternating row color based on theme transparency
+                const bg = idx % 2 === 0 ? 'rgba(0,0,0,0.01)' : 'rgba(0,0,0,0.03)';
+                
+                bodyHtml += `<tr style="background:${bg}"><td>${s.name}</td>`;
+                s.risks.forEach(r => {
+                    const opt = config.options.find(o => o.val === r);
+                    bodyHtml += `<td><div class="circle" style="background:${opt.color}">${opt.symbol}</div></td>`;
+                });
+                bodyHtml += `</tr>`;
+            });
+            tbody.innerHTML = bodyHtml;
+
+            // Legend
+            legend.innerHTML = config.options.map(o => `
+                <div class="legend-item">
+                    <div class="circle" style="background:${o.color}; width:18px; height:18px; font-size:0.7rem;">${o.symbol}</div>
+                    ${o.label}
+                </div>
+            `).join('');
+        }
+
+        function renderSummary(studies, config) {
+            const container = document.getElementById('summary-chart');
+            const legend = document.getElementById('summary-legend');
+            const total = studies.length;
+
+            legend.innerHTML = config.options.map(o => `
+                <div class="legend-item">
+                    <div class="legend-dot" style="background:${o.color}"></div> ${o.label}
+                </div>
+            `).join('');
+
+            let chartHtml = "";
+            config.domains.forEach((d, i) => {
+                let rowHtml = `<div class="summary-row"><div class="summary-label">${d}</div><div class="summary-track">`;
+                config.options.forEach(opt => {
+                    const count = studies.filter(s => s.risks[i] === opt.val).length;
+                    if(count > 0) {
+                        const pct = (count / total) * 100;
+                        rowHtml += `<div class="summary-bar" style="width:${pct}%; background:${opt.color}">${Math.round(pct)}%</div>`;
+                    }
+                });
+                rowHtml += `</div></div>`;
+                chartHtml += rowHtml;
+            });
+            container.innerHTML = chartHtml;
+        }
+
+        function downloadChart(id, filename) {
+            const el = document.getElementById(id);
+            const btn = document.activeElement; 
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+            // Specific options to fix the rotation bug
+            html2canvas(el, { 
+                scale: 3, 
+                backgroundColor: "#ffffff",
+                onclone: (clonedDoc) => {
+                    // Ensure the rotated elements render properly in the clone
+                    const rotators = clonedDoc.querySelectorAll('.rotate-wrapper');
+                    rotators.forEach(r => r.style.transform = 'rotate(-90deg)');
+                }
+            }).then(c => {
+                const a = document.createElement('a');
+                a.download = `${filename}.png`;
+                a.href = c.toDataURL();
+                a.click();
+                btn.innerHTML = originalText;
+            });
+        }
+
+        // Init
+        addStudy("Smith et al., 2020");
+    </script>
+
+</body>
+</html>

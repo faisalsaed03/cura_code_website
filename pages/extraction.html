@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Extraction | Cura Code</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Roboto+Slab:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        /* ========================================= */
+        /* CURA CODE DESIGN SYSTEM (Restored)        */
+        /* ========================================= */
+        :root {
+            /* Brand Colors */
+            --primary: #6AC9E8;       /* Light Blue */
+            --primary-dark: #4FB3D9;  /* Darker Blue */
+            --primary-light: #eaf8fc; /* Very Light Blue Background */
+            
+            /* Neutrals */
+            --secondary: #2D3436;     /* Dark Grey (Text Main) */
+            --text-secondary: #636e72;/* Grey text */
+            --bg-body: #f4f7fc;       /* App Background */
+            --bg-card: #ffffff;
+            --border: #eef2f5;
+
+            /* Semantic */
+            --success: #00b894;       /* Mint Green */
+            --danger: #ff7675;        /* Salmon Red */
+            --warning: #fdcb6e;       /* Sunflower Yellow */
+
+            /* Properties */
+            --radius: 16px;
+            --shadow-card: 0 10px 30px rgba(106, 201, 232, 0.08);
+            --shadow-hover: 0 15px 35px rgba(106, 201, 232, 0.15);
+            --font-main: 'Nunito', sans-serif;
+            --font-heading: 'Roboto Slab', serif;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; outline: none; }
+        
+        body { 
+            font-family: var(--font-main); background: var(--bg-body); 
+            color: var(--secondary); height: 100vh; display: flex; 
+            flex-direction: column; overflow: hidden; 
+        }
+
+        /* --- NAVBAR --- */
+        .navbar { 
+            height: 70px; padding: 0 40px; background: rgba(255,255,255,0.95); 
+            backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); 
+            display: flex; justify-content: space-between; align-items: center; 
+            flex-shrink: 0; z-index: 50; 
+        }
+        .nav-left { display: flex; align-items: center; gap: 15px; height: 100%; }
+        
+        .back-btn { 
+            text-decoration: none; color: var(--text-secondary); font-weight: 700; 
+            font-size: 0.95rem; display: flex; align-items: center; gap: 8px; 
+            padding: 8px 12px; border-radius: 8px; transition: 0.2s;
+            height: 40px; 
+        }
+        .back-btn:hover { background: var(--bg-body); color: var(--primary-dark); }
+        
+        .nav-separator { color: #dfe6e9; font-size: 0.8rem; }
+        
+        .nav-brand { 
+            font-family: var(--font-heading); font-weight: 700; font-size: 1.1rem; 
+            color: var(--secondary); display: flex; align-items: center; gap: 10px; height: 40px;
+        }
+        .nav-brand i { color: var(--primary); }
+
+        /* --- MAIN LAYOUT --- */
+        .workspace { flex: 1; display: grid; grid-template-columns: 1fr 380px; overflow: hidden; }
+        
+        /* LEFT: GRAPH VIEWER */
+        .graph-section { 
+            padding: 40px; overflow: hidden; display: flex; 
+            flex-direction: column; align-items: center; justify-content: center;
+            position: relative; background: #e8ecf1; 
+        }
+        
+        .upload-zone {
+            width: 100%; max-width: 600px; height: 300px;
+            border: 3px dashed #b2bec3; border-radius: 20px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            background: white; color: var(--text-secondary); cursor: pointer;
+            transition: 0.3s; box-shadow: var(--shadow-card);
+        }
+        .upload-zone:hover { border-color: var(--primary); background: #f0f9ff; color: var(--primary-dark); transform: translateY(-3px); }
+        
+        .canvas-container {
+            position: relative; box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            background: white; border-radius: 8px; border: 4px solid white;
+            overflow: auto; max-width: 100%; max-height: 100%;
+            display: none; cursor: crosshair;
+        }
+
+        /* Magnifier */
+        .magnifier {
+            position: absolute; top: 20px; right: 20px; width: 180px; height: 180px;
+            border: 4px solid white; border-radius: 50%; overflow: hidden; 
+            z-index: 100; background: white; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            display: none; pointer-events: none;
+        }
+        .magnifier canvas { width: 100%; height: 100%; display: block; }
+        .crosshair {
+            position: absolute; top: 50%; left: 50%; width: 10px; height: 10px; 
+            border-radius: 50%; background: rgba(255, 118, 117, 0.8); /* Red tint */
+            transform: translate(-50%, -50%); z-index: 101; 
+            border: 2px solid white;
+        }
+
+        /* RIGHT: SIDEBAR (The Wizard) */
+        .data-sidebar { 
+            background: white; border-left: 1px solid var(--border); 
+            display: flex; flex-direction: column; z-index: 20; 
+        }
+        
+        /* Guide Header */
+        .wizard-header { 
+            padding: 30px; border-bottom: 1px solid var(--border); 
+            background: #fff;
+        }
+        
+        .progress-container {
+            height: 6px; width: 100%; background: #dfe6e9; border-radius: 3px;
+            margin-bottom: 15px; overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%; background: var(--primary); width: 0%; 
+            transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .step-label { 
+            font-size: 0.75rem; font-weight: 800; text-transform: uppercase; 
+            color: var(--primary-dark); letter-spacing: 1px; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        
+        .instruction-text { font-size: 1.1rem; font-weight: 800; color: var(--secondary); line-height: 1.4; font-family: 'Roboto Slab', serif; }
+        .instruction-sub { font-size: 0.9rem; color: var(--text-secondary); margin-top: 8px; }
+
+        .data-list { flex: 1; overflow-y: auto; padding: 0; background: #f9fbfd; }
+        
+        .data-row { 
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 25px; border-bottom: 1px solid var(--border); 
+            background: white; font-size: 0.9rem; transition: 0.1s;
+        }
+        .data-row:hover { background: #f0f9ff; }
+        .data-idx { font-weight: 800; color: #b2bec3; width: 35px; font-size: 0.8rem; }
+        .data-vals { font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: var(--secondary); font-weight: 600; }
+        
+        .btn-icon-del { 
+            color: #dfe6e9; padding: 8px; border-radius: 8px; cursor: pointer; transition: 0.2s; 
+        }
+        .btn-icon-del:hover { color: var(--danger); background: #fff0f0; }
+
+        .data-actions { padding: 25px; border-top: 1px solid var(--border); background: white; display: grid; gap: 12px; }
+
+        /* --- COMPONENTS --- */
+        .btn { 
+            padding: 14px 20px; border-radius: 12px; font-weight: 700; font-size: 0.95rem; 
+            cursor: pointer; border: none; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 10px;
+        }
+        .btn-primary { background: var(--secondary); color: white; box-shadow: 0 5px 15px rgba(45, 52, 54, 0.2); }
+        .btn-primary:hover { background: #000; transform: translateY(-2px); }
+        
+        .btn-secondary { background: white; border: 2px solid #dfe6e9; color: var(--text-secondary); }
+        .btn-secondary:hover { border-color: var(--secondary); color: var(--secondary); background: #f9fbfd; }
+
+        /* MODAL */
+        #calib-modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); display: none; backdrop-filter: blur(4px);
+            align-items: center; justify-content: center; z-index: 200;
+        }
+        .modal-card { 
+            background: white; padding: 35px; border-radius: 20px; width: 360px; 
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2); 
+            animation: slideUp 0.3s ease-out;
+        }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        
+        .modal-input { 
+            width: 100%; padding: 14px; border: 2px solid #dfe6e9; 
+            border-radius: 10px; margin: 25px 0; font-size: 1.1rem; 
+            font-family: var(--font-main); transition: 0.2s; font-weight: 600; color: var(--secondary);
+        }
+        .modal-input:focus { border-color: var(--primary); background: #fcfdfe; }
+
+        /* Empty State */
+        .empty-state {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            height: 100%; color: #b2bec3; text-align: center; padding: 30px;
+        }
+        .empty-state i { font-size: 2.5rem; margin-bottom: 15px; opacity: 0.5; }
+        .empty-state p { font-weight: 600; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="nav-left">
+            <a href="../workspace.html" class="back-btn"><i class="fas fa-arrow-left"></i> Workspace</a>
+            <i class="fas fa-chevron-right nav-separator"></i>
+            <div class="nav-brand"><i class="fas fa-chart-area"></i> Graph Digitizer</div>
+        </div>
+    </nav>
+
+    <div class="workspace">
+        
+        <div class="graph-section">
+            <input type="file" id="img-input" hidden accept="image/*" onchange="loadImage(this)">
+            
+            <div id="upload-placeholder" class="upload-zone" onclick="document.getElementById('img-input').click()">
+                <div style="background:var(--primary-light); padding:25px; border-radius:50%; margin-bottom:20px;">
+                    <i class="fas fa-cloud-upload-alt fa-2x" style="color:var(--primary-dark);"></i>
+                </div>
+                <span style="font-weight:800; color:var(--secondary); font-size: 1.2rem; font-family:'Roboto Slab', serif;">Upload Graph Image</span>
+                <span style="font-size:0.95rem; margin-top: 8px;">Click to browse (PNG, JPG)</span>
+            </div>
+
+            <div id="canvas-wrapper" class="canvas-container">
+                <canvas id="graph-canvas"></canvas>
+            </div>
+            
+            <div id="magnifier" class="magnifier">
+                <div class="crosshair"></div>
+                <canvas id="mag-canvas"></canvas>
+            </div>
+        </div>
+
+        <div class="data-sidebar">
+            <div class="wizard-header" id="wizard-header">
+                <div class="progress-container"><div class="progress-fill" id="progress-bar"></div></div>
+                <div class="step-label" id="step-badge"><i class="fas fa-circle-play"></i> Start</div>
+                <div class="instruction-text" id="main-instruction">Upload a graph to begin.</div>
+                <div class="instruction-sub" id="sub-instruction">The system will guide you through calibration.</div>
+            </div>
+
+            <div class="data-list" id="data-list">
+                <div class="empty-state">
+                    <i class="fas fa-list-ol"></i>
+                    <p>Extracted points will appear here.</p>
+                </div>
+            </div>
+            
+            <div class="data-actions">
+                <button class="btn btn-primary" onclick="exportCSV()"><i class="fas fa-file-csv"></i> Export Data</button>
+                <button class="btn btn-secondary" onclick="resetProcess()">Reset / New Image</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="calib-modal">
+        <div class="modal-card">
+            <h3 id="calib-label" style="font-weight:800; color:var(--secondary); font-size: 1.3rem; font-family:'Roboto Slab', serif;">Enter Value</h3>
+            <p style="font-size:0.95rem; color:var(--text-secondary); margin-top:10px; line-height: 1.5;">What is the numerical value of the axis at this specific point?</p>
+            <input type="number" id="calib-input" class="modal-input" placeholder="e.g. 0, 100, 50.5" step="any">
+            <div style="display:flex; justify-content:flex-end; gap:10px;">
+                <button class="btn btn-primary" style="width:100%; padding: 14px; background:var(--primary); color:white;" onclick="submitCalibration()">Confirm Value</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- STATE ---
+        let step = 0; 
+        let img = new Image();
+        let hoveredPointId = null;
+        let calib = { x1: { px:0, val:0 }, x2: { px:0, val:0 }, y1: { py:0, val:0 }, y2: { py:0, val:0 } };
+        let dataPoints = [];
+
+        // DOM
+        const canvas = document.getElementById('graph-canvas');
+        const ctx = canvas.getContext('2d');
+        const wrapper = document.getElementById('canvas-wrapper');
+        const magWrap = document.getElementById('magnifier');
+        const magCanvas = document.getElementById('mag-canvas');
+        const magCtx = magCanvas.getContext('2d');
+        const calibInput = document.getElementById('calib-input');
+        const calibLabel = document.getElementById('calib-label');
+        const modal = document.getElementById('calib-modal');
+
+        // --- 1. LOAD IMAGE ---
+        function loadImage(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    img.src = e.target.result;
+                    img.onload = () => {
+                        document.getElementById('upload-placeholder').style.display = 'none';
+                        document.getElementById('canvas-wrapper').style.display = 'block';
+                        canvas.width = img.width; canvas.height = img.height;
+                        drawCanvas();
+                        startCalibration();
+                    }
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+            input.value = '';
+        }
+
+        // --- 2. UPDATE UI (The Wizard) ---
+        function updateInstruction() {
+            const bar = document.getElementById('progress-bar');
+            const badge = document.getElementById('step-badge');
+            const main = document.getElementById('main-instruction');
+            const sub = document.getElementById('sub-instruction');
+
+            if (step === 1) {
+                bar.style.width = '20%';
+                badge.innerHTML = '<i class="fas fa-ruler-horizontal"></i> Step 1/4: Calibration';
+                main.innerText = "Click the start of the X-Axis.";
+                sub.innerText = "Usually the far-left value (e.g., 0).";
+            } else if (step === 2) {
+                bar.style.width = '40%';
+                main.innerText = "Click the end of the X-Axis.";
+                sub.innerText = "Usually the far-right value.";
+            } else if (step === 3) {
+                bar.style.width = '60%';
+                badge.innerHTML = '<i class="fas fa-ruler-vertical"></i> Step 3/4: Calibration';
+                main.innerText = "Click the start of the Y-Axis.";
+                sub.innerText = "Usually the bottom value (e.g., 0).";
+            } else if (step === 4) {
+                bar.style.width = '80%';
+                main.innerText = "Click the end of the Y-Axis.";
+                sub.innerText = "Usually the top value.";
+            } else if (step === 5) {
+                bar.style.width = '100%';
+                bar.style.background = 'var(--success)';
+                badge.innerHTML = '<i class="fas fa-check-circle"></i> Extraction Mode';
+                badge.style.color = 'var(--success)';
+                main.innerText = "Click points on the graph curve.";
+                sub.innerText = "Data will appear in the list below.";
+            }
+        }
+
+        function startCalibration() { step = 1; updateInstruction(); }
+
+        // --- 3. CANVAS LOGIC ---
+        function drawCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0);
+
+            // Calibration Markers
+            ctx.fillStyle = '#ff7675'; // Red
+            if(step>1) fillSquare(calib.x1.px, calib.x1.py);
+            if(step>2) fillSquare(calib.x2.px, calib.x2.py);
+            if(step>3) fillSquare(calib.y1.px, calib.y1.py);
+            if(step>4) fillSquare(calib.y2.px, calib.y2.py);
+
+            // Data Points
+            dataPoints.forEach((p, i) => {
+                ctx.beginPath();
+                ctx.arc(p.px, p.py, 5, 0, 2 * Math.PI);
+                ctx.fillStyle = (p.id === hoveredPointId) ? '#4FB3D9' : '#6AC9E8'; // Blue
+                ctx.fill();
+                ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.stroke();
+
+                if (p.id === hoveredPointId && step === 5) drawTooltip(p.px, p.py, `Pt #${i+1}`);
+            });
+        }
+
+        function fillSquare(x, y) { ctx.fillRect(x-5, y-5, 10, 10); ctx.strokeStyle='white'; ctx.lineWidth=2; ctx.strokeRect(x-5, y-5, 10, 10); }
+
+        function drawTooltip(x, y, text) {
+            const padding = 10;
+            ctx.font = 'bold 14px Nunito';
+            const w = ctx.measureText(text).width + (padding*2);
+            ctx.fillStyle = 'rgba(45, 52, 54, 0.9)'; // Dark Grey
+            ctx.beginPath(); ctx.roundRect(x+10, y-35, w, 28, 6); ctx.fill();
+            ctx.fillStyle = 'white'; ctx.fillText(text, x+10+padding, y-35+19);
+        }
+
+        // --- 4. INTERACTIONS ---
+        canvas.addEventListener('mousemove', (e) => {
+            if(step === 0) return;
+            const r = canvas.getBoundingClientRect();
+            const px = (e.clientX - r.left) * (canvas.width / r.width);
+            const py = (e.clientY - r.top) * (canvas.height / r.height);
+
+            // Magnifier
+            magWrap.style.display = 'block';
+            const size = 300; magCanvas.width = size; magCanvas.height = size;
+            magCtx.drawImage(canvas, px - (size/5), py - (size/5), size/2.5, size/2.5, 0, 0, size, size);
+
+            // Hover Check
+            if(step === 5) {
+                let found = null;
+                for(const p of dataPoints) {
+                    if(Math.sqrt((px-p.px)**2 + (py-p.py)**2) < 8) { found = p.id; break; }
+                }
+                if(found !== hoveredPointId) { hoveredPointId = found; drawCanvas(); }
+            }
+        });
+
+        canvas.addEventListener('mouseleave', () => { magWrap.style.display='none'; hoveredPointId=null; drawCanvas(); });
+
+        canvas.addEventListener('mousedown', (e) => {
+            if(step === 0 || hoveredPointId !== null) return;
+            const r = canvas.getBoundingClientRect();
+            const px = (e.clientX - r.left) * (canvas.width / r.width);
+            const py = (e.clientY - r.top) * (canvas.height / r.height);
+
+            if(step < 5) {
+                if(step===1) { calib.x1.px=px; calib.x1.py=py; openModal("X-Axis Start Value"); }
+                if(step===2) { calib.x2.px=px; calib.x2.py=py; openModal("X-Axis End Value"); }
+                if(step===3) { calib.y1.px=px; calib.y1.py=py; openModal("Y-Axis Start Value"); }
+                if(step===4) { calib.y2.px=px; calib.y2.py=py; openModal("Y-Axis End Value"); }
+            } else {
+                // Extract
+                const val = mapPixels(px, py);
+                const pt = { id: Date.now(), px, py, x: val.x, y: val.y };
+                dataPoints.push(pt);
+                drawCanvas(); renderList();
+            }
+        });
+
+        function openModal(title) {
+            document.getElementById('calib-label').innerText = title;
+            document.getElementById('calib-modal').style.display = 'flex';
+            calibInput.value = ''; setTimeout(()=>calibInput.focus(), 50);
+        }
+
+        function submitCalibration() {
+            const val = parseFloat(calibInput.value);
+            if(isNaN(val)) return alert("Invalid number");
+            document.getElementById('calib-modal').style.display = 'none';
+            
+            if(step===1) calib.x1.val = val;
+            else if(step===2) calib.x2.val = val;
+            else if(step===3) calib.y1.val = val;
+            else if(step===4) calib.y2.val = val;
+            
+            step++;
+            updateInstruction();
+            drawCanvas();
+        }
+
+        function mapPixels(px, py) {
+            const xR = (calib.x2.val - calib.x1.val) / (calib.x2.px - calib.x1.px);
+            const yR = (calib.y2.val - calib.y1.val) / (calib.y2.py - calib.y1.py);
+            return {
+                x: parseFloat((calib.x1.val + (px - calib.x1.px)*xR).toPrecision(6)),
+                y: parseFloat((calib.y1.val + (py - calib.y1.py)*yR).toPrecision(6))
+            };
+        }
+
+        function renderList() {
+            const list = document.getElementById('data-list');
+            if(dataPoints.length === 0) {
+                list.innerHTML = `<div class="empty-state"><i class="fas fa-list-ol"></i><p>Extracted points will appear here.</p></div>`;
+                return;
+            }
+            let html = "";
+            dataPoints.forEach((p, i) => {
+                const isHov = p.id === hoveredPointId;
+                html += `
+                <div class="data-row" style="${isHov?'background:#f0f9ff':''}" onmouseenter="highlight(${p.id})" onmouseleave="unhighlight()">
+                    <span class="data-idx">#${i+1}</span>
+                    <div class="data-vals">X:${p.x}, Y:${p.y}</div>
+                    <i class="fas fa-trash-alt btn-icon-del" onclick="delPoint(${p.id})"></i>
+                </div>`;
+            });
+            list.innerHTML = html;
+        }
+
+        function highlight(id) { hoveredPointId = id; drawCanvas(); }
+        function unhighlight() { hoveredPointId = null; drawCanvas(); }
+        function delPoint(id) { dataPoints = dataPoints.filter(p=>p.id!==id); drawCanvas(); renderList(); }
+
+        function exportCSV() {
+            if(dataPoints.length===0) return alert("No data.");
+            let csv = "ID,X,Y\n" + dataPoints.map((p,i)=>`${i+1},${p.x},${p.y}`).join("\n");
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+            a.download = 'graph_data.csv'; a.click();
+        }
+
+        function resetProcess() { if(confirm("Reset everything?")) location.reload(); }
+        calibInput.addEventListener("keypress", (e)=>{if(e.key==="Enter") submitCalibration()});
+    </script>
+</body>
+</html>

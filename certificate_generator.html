@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin | CuraCode Certificate Manager</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="../assets/logo_final.png">
+
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+    <style>
+        :root {
+            --primary: #0A4174;
+            --dark: #001D39;
+            --accent: #49769F;
+            --light: #f3f6f9;
+            --border: #e2e8f0;
+            --success: #10b981;
+            --danger: #ef4444;
+        }
+
+        body { 
+            font-family: 'Manrope', sans-serif; 
+            background: #f0f4f8; 
+            margin: 0; padding: 40px 20px; 
+            color: var(--dark); 
+        }
+        
+        .container { 
+            max-width: 1100px; margin: 0 auto; 
+            background: white; border-radius: 20px; 
+            box-shadow: 0 10px 40px rgba(0,0,0,0.06); 
+            overflow: hidden;
+        }
+
+        .app-header {
+            background: var(--dark); color: white; padding: 25px 40px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .app-header h1 { 
+            margin: 0; font-size: 1.4rem; font-weight: 800; 
+            display: flex; align-items: center; gap: 10px; 
+            letter-spacing: 0.5px;
+        }
+        .brand-badge { 
+            background: rgba(255,255,255,0.1); padding: 5px 12px; 
+            border-radius: 20px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
+        }
+
+        .content { padding: 40px; }
+
+        .section-title { 
+            font-size: 0.9rem; text-transform: uppercase; color: var(--accent); 
+            font-weight: 700; margin-bottom: 20px; letter-spacing: 1px;
+        }
+
+        .grid-3 { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 20px; margin-bottom: 40px; }
+        
+        .input-wrapper label { 
+            display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 8px; color: #64748b; 
+        }
+        .input-wrapper input { 
+            width: 100%; padding: 12px 16px; border: 2px solid var(--border); 
+            border-radius: 10px; font-family: inherit; font-size: 0.95rem; font-weight: 600;
+            transition: all 0.2s; box-sizing: border-box; color: var(--dark);
+        }
+        .input-wrapper input:focus { 
+            border-color: var(--primary); outline: none; box-shadow: 0 0 0 4px rgba(10, 65, 116, 0.1); 
+        }
+
+        .student-panel { 
+            background: #f8fafc; border: 1px solid var(--border); 
+            border-radius: 16px; padding: 25px; margin-bottom: 30px;
+        }
+        .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        
+        .student-row { 
+            display: grid; grid-template-columns: 2fr 2fr 1.5fr 40px; gap: 15px; 
+            align-items: center; margin-bottom: 10px; 
+            background: white; padding: 8px 15px; border-radius: 10px; 
+            border: 1px solid transparent; box-shadow: 0 2px 5px rgba(0,0,0,0.03); 
+            transition: 0.2s;
+        }
+        .student-row:hover { border-color: var(--border); transform: translateY(-1px); }
+        .student-row input { border: none; background: transparent; font-weight: 600; color: #334155; width: 100%; outline: none; }
+        .student-row input:focus { color: var(--primary); }
+
+        .btn { 
+            padding: 12px 24px; border-radius: 50px; font-weight: 700; font-size: 0.9rem; 
+            cursor: pointer; border: none; display: inline-flex; align-items: center; gap: 8px; 
+            transition: all 0.2s;
+        }
+        .btn-add { background: white; border: 2px solid var(--border); color: var(--primary); }
+        .btn-add:hover { border-color: var(--primary); background: #f0f9ff; }
+        
+        .btn-primary { background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; box-shadow: 0 4px 15px rgba(10, 65, 116, 0.2); }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(10, 65, 116, 0.3); }
+        
+        .btn-download { background: #10b981; color: white; }
+        .btn-download:hover { background: #059669; transform: translateY(-2px); }
+
+        .btn-del { width: 32px; height: 32px; border-radius: 8px; background: #fee2e2; color: var(--danger); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; }
+        .btn-del:hover { background: var(--danger); color: white; }
+
+        .actions-area { display: flex; justify-content: space-between; align-items: center; padding-top: 20px; border-top: 1px solid var(--border); }
+        #status-msg { font-weight: 700; color: var(--accent); }
+
+        iframe { width: 100%; height: 500px; margin-top: 40px; border-radius: 12px; border: 1px solid var(--border); background: #525659; display: none; }
+
+        .history-section { margin-top: 60px; }
+        .data-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        .data-table th { text-align: left; padding: 15px; background: #f1f5f9; color: #64748b; font-size: 0.8rem; text-transform: uppercase; font-weight: 700; }
+        .data-table td { padding: 15px; border-bottom: 1px solid var(--border); color: var(--dark); font-weight: 600; font-size: 0.9rem; }
+        .data-table tr:last-child td { border-bottom: none; }
+        
+        .tag-date { background: #e0f2fe; color: #0369a1; padding: 4px 8px; border-radius: 6px; font-size: 0.8rem; }
+
+        #edit-banner { 
+            display: none; background: #fffbeb; color: #b45309; 
+            padding: 12px; text-align: center; font-weight: 600; 
+            border-bottom: 1px solid #fcd34d; font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="edit-banner">
+        <i class="fas fa-edit"></i> You are editing an existing batch. 
+        <button onclick="cancelEdit()" style="background:none; border:none; text-decoration:underline; cursor:pointer; color:inherit; font-weight:800; margin-left:10px;">Cancel</button>
+    </div>
+
+    <div class="container">
+        <div class="app-header">
+            <h1><i class="fas fa-layer-group"></i> Certificate Manager</h1>
+            <div class="brand-badge">Template Mode</div>
+        </div>
+
+        <div class="content">
+            
+            <div class="section-title">1. Course Details</div>
+            <div class="grid-3">
+                <div class="input-wrapper">
+                    <label>Course Title</label>
+                    <input type="text" id="courseName" placeholder="e.g. Systematic Review Mastery">
+                </div>
+                <div class="input-wrapper">
+                    <label>Training Duration</label>
+                    <input type="text" id="courseHours" placeholder="e.g. 15 Hours">
+                </div>
+                <div class="input-wrapper">
+                    <label>Date Range</label>
+                    <input type="text" id="courseDates" placeholder="e.g. Jan 12 - 15, 2026">
+                </div>
+            </div>
+
+            <div class="student-panel">
+                <div class="panel-header">
+                    <div class="section-title" style="margin:0;">2. Student Roster</div>
+                    <button class="btn btn-add" onclick="addStudentRow()"><i class="fas fa-plus"></i> Add Student</button>
+                </div>
+                <div id="student-list"></div>
+            </div>
+
+            <div class="actions-area">
+                <div id="status-msg">Waiting for input...</div>
+                <div style="display:flex; gap: 10px;">
+                    <button class="btn btn-primary" onclick="generatePreview()"><i class="fas fa-eye"></i> Preview</button>
+                    <button class="btn btn-download" onclick="processBatch('single')"><i class="fas fa-file-pdf"></i> Save & Download One</button>
+                    <button class="btn btn-download" onclick="processBatch('zip')"><i class="fas fa-file-archive"></i> Save & Download ZIP</button>
+                </div>
+            </div>
+
+            <iframe id="pdf-preview"></iframe>
+
+            <div class="history-section">
+                <div class="section-title">3. Recent Batches</div>
+                <table class="data-table">
+                    <thead><tr><th>Created Date</th><th>Course Name</th><th>Details</th><th>Actions</th></tr></thead>
+                    <tbody id="history-body"><tr><td colspan="4">Loading database...</td></tr></tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // CONFIG
+        const firebaseConfig = { apiKey: "AIzaSyCbE13rFgfC6ipnf8-rYR8uAywsseU7Ntg", authDomain: "curacode-c6200.firebaseapp.com", projectId: "curacode-c6200", appId: "1:773218077864:web:217dcc93c6869acb44c69d" };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+        const ADMIN_UID = "8vYqgLRJD1ck68rmBY7EEVGDfNN2";
+        let currentBatchId = null;
+
+        auth.onAuthStateChanged(user => {
+            if (!user || user.uid !== ADMIN_UID) {
+                alert("Unauthorized Access");
+                window.location.href = "../index.html";
+            } else {
+                loadHistory();
+            }
+        });
+        addStudentRow(); 
+
+        // --- PDF ENGINE (TEMPLATE BASED) ---
+        async function createPDF(studentName, courseName, hours, dates, serialNumber) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+            const w = doc.internal.pageSize.getWidth();
+            const h = doc.internal.pageSize.getHeight();
+            const cx = w / 2;
+
+            // Define Image Paths
+            const templateUrl = '../assets/certificate_template.png'; // YOUR BACKGROUND IMAGE
+            const logoUrl = '../assets/logo_final.png';
+
+            // 1. BACKGROUND TEMPLATE (Full Page)
+            try {
+                const img = await loadImage(templateUrl);
+                doc.addImage(img, 'PNG', 0, 0, w, h);
+            } catch(e) {
+                // If template missing, show warning
+                doc.setFontSize(10); doc.setTextColor(200,0,0);
+                doc.text("Warning: 'assets/certificate_template.png' not found.", 10, 10);
+            }
+
+            // Colors
+            const cDark = "#001D39";
+            const cPrimary = "#0A4174";
+            const cMedium = "#49769F";
+
+            // 2. OVERLAY TEXT (Matches your visual style)
+            
+            // "CURA CODE" & "CERTIFICATE" - (Uncomment if your template doesn't have them)
+            // doc.setFont("helvetica", "bold"); doc.setFontSize(16); doc.setTextColor(cPrimary);
+            // doc.text("C U R A   C O D E", cx, 60, { align: 'center', charSpace: 3 });
+            // doc.setFont("times", "bold"); doc.setFontSize(44); doc.setTextColor(cDark);
+            // doc.text("CERTIFICATE", cx, 80, { align: 'center' });
+            // doc.setFont("helvetica", "normal"); doc.setFontSize(13); doc.setTextColor(cMedium);
+            // doc.text("O F   C O M P L E T I O N", cx, 90, { align: 'center', charSpace: 4 });
+
+            // 3. STUDENT NAME (Centerpiece)
+            // Adjusted Y to fit standard template middle
+            doc.setFont("times", "italic");
+            doc.setFontSize(42);
+            doc.setTextColor(cPrimary);
+            doc.text(studentName, cx, 99, { align: 'center' });
+
+            // 4. COURSE DETAILS
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(22);
+            doc.setTextColor(cDark);
+            doc.text(courseName, cx, 130, { align: 'center' });
+
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(11);
+            doc.setTextColor(cMedium);
+            doc.text(`${hours} Hours  |  Dates: ${dates}`, cx, 145, { align: 'center' });
+
+            // 5. SERIAL NUMBER (Bottom Right/Center)
+            doc.setFontSize(9);
+            doc.setTextColor(100);
+            doc.text(`Serial No: ${serialNumber}`, cx, h - 12, { align: 'center' });
+
+            return doc;
+        }
+
+        // --- HELPERS ---
+        function addStudentRow(name="", email="", phone="") {
+            const div = document.createElement('div');
+            div.className = 'student-row';
+            div.innerHTML = `
+                <input type="text" class="s-name" placeholder="Full Name" value="${name}">
+                <input type="email" class="s-email" placeholder="Email Address" value="${email}">
+                <input type="text" class="s-phone" placeholder="Phone" value="${phone}">
+                <div class="btn-del" onclick="this.parentElement.remove()"><i class="fas fa-trash"></i></div>
+            `;
+            document.getElementById('student-list').appendChild(div);
+        }
+
+        function loadImage(url) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.crossOrigin = "Anonymous";
+                img.src = url;
+                img.onload = () => resolve(img);
+                img.onerror = () => reject();
+            });
+        }
+
+        // --- CORE LOGIC ---
+        async function processBatch(mode) {
+            const cName = document.getElementById('courseName').value;
+            const cHours = document.getElementById('courseHours').value;
+            const cDates = document.getElementById('courseDates').value;
+            const rows = document.querySelectorAll('.student-row');
+
+            if(!cName || !cHours || !cDates) return alert("Fill all course details.");
+            if(rows.length === 0) return alert("Add students.");
+
+            const status = document.getElementById('status-msg');
+            status.innerText = "Generating...";
+            status.style.color = "#0A4174";
+            
+            const zip = new JSZip();
+            const folder = zip.folder("Certificates");
+            let students = [];
+            const batchId = currentBatchId || `batch_${Date.now()}`;
+
+            for (let row of rows) {
+                const name = row.querySelector('.s-name').value;
+                const email = row.querySelector('.s-email').value;
+                const phone = row.querySelector('.s-phone').value;
+                if(!name) continue;
+
+                // Unique Serial
+                const serial = "CURA-" + Math.random().toString(36).substr(2, 6).toUpperCase();
+
+                const doc = await createPDF(name, cName, cHours, cDates, serial);
+
+                if(mode === 'zip') folder.file(`${name}.pdf`, doc.output('blob'));
+                if(mode === 'single') doc.save(`${name}.pdf`);
+
+                if(email) {
+                    students.push({name, email, phone});
+                    db.collection('certificates').add({
+                        studentName: name, studentEmail: email, phone,
+                        courseName: cName, hours: cHours, dateText: cDates, batchId,
+                        serialNumber: serial,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                }
+            }
+
+            const batchData = {
+                courseName: cName, hours: cHours, dateText: cDates,
+                studentCount: students.length, students,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            if(currentBatchId) await db.collection('certificate_batches').doc(currentBatchId).update(batchData);
+            else await db.collection('certificate_batches').add(batchData);
+
+            if(mode === 'zip') {
+                const content = await zip.generateAsync({type:"blob"});
+                saveAs(content, "Certificates.zip");
+            }
+
+            status.innerText = "Complete!";
+            status.style.color = "#10b981";
+            loadHistory();
+            if(currentBatchId) cancelEdit();
+        }
+
+        async function generatePreview() {
+            const name = document.querySelector('.s-name').value || "Jane Doe";
+            const doc = await createPDF(name, 
+                document.getElementById('courseName').value || "Sample Course", 
+                document.getElementById('courseHours').value || "15",
+                document.getElementById('courseDates').value || "Jan 2026",
+                "PREVIEW-SERIAL-123"
+            );
+            const iframe = document.getElementById('pdf-preview');
+            iframe.style.display = "block";
+            iframe.src = doc.output('datauristring');
+        }
+
+        function loadHistory() {
+            const tbody = document.getElementById('history-body');
+            db.collection('certificate_batches').orderBy('createdAt', 'desc').limit(10).get().then(snap => {
+                tbody.innerHTML = "";
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    tbody.innerHTML += `
+                        <tr>
+                            <td><span class="tag-date">${new Date(d.createdAt.seconds*1000).toLocaleDateString()}</span></td>
+                            <td>${d.courseName}</td>
+                            <td>${d.studentCount} Students</td>
+                            <td><button style="color:#0A4174; border:none; background:none; cursor:pointer; font-weight:800;" onclick="editBatch('${doc.id}')">EDIT</button></td>
+                        </tr>
+                    `;
+                });
+            });
+        }
+
+        async function editBatch(id) {
+            currentBatchId = id;
+            document.getElementById('edit-banner').style.display = 'block';
+            const doc = await db.collection('certificate_batches').doc(id).get();
+            const d = doc.data();
+            document.getElementById('courseName').value = d.courseName;
+            document.getElementById('courseHours').value = d.hours;
+            document.getElementById('courseDates').value = d.dateText;
+            const list = document.getElementById('student-list');
+            list.innerHTML = "";
+            d.students.forEach(s => addStudentRow(s.name, s.email, s.phone));
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function cancelEdit() {
+            currentBatchId = null;
+            document.getElementById('edit-banner').style.display = 'none';
+            document.getElementById('student-list').innerHTML = "";
+            document.getElementById('courseName').value = "";
+            document.getElementById('courseHours').value = "";
+            document.getElementById('courseDates').value = "";
+            addStudentRow();
+        }
+    </script>
+</body>
+</html>

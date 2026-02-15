@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Randomization | Cura Code</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <style>
+        body { font-family: 'Nunito'; background: linear-gradient(135deg, #f0f7fa 0%, #ffffff 100%); min-height: 100vh; margin: 0; display: flex; flex-direction: column; }
+        .tool-container { max-width: 500px; margin: 80px auto; background: rgba(255,255,255,0.9); padding: 40px; border-radius: 24px; text-align: center; box-shadow: 0 20px 60px rgba(106, 201, 232, 0.2); }
+        input, select { width: 100%; padding: 12px; border: 2px solid #eef2f5; border-radius: 10px; margin-top: 5px; box-sizing: border-box; }
+        .btn-calc { width: 100%; padding: 15px; background: #6AC9E8; color: white; border: none; border-radius: 12px; font-weight: 800; cursor: pointer; margin-top: 15px; }
+        #list-box { margin-top: 20px; text-align: left; background: white; padding: 20px; border: 1px solid #eee; height: 300px; overflow-y: scroll; display: none; }
+        .item { padding: 5px; border-bottom: 1px solid #f0f0f0; }
+        .tag { padding: 2px 8px; border-radius: 4px; color: white; font-weight: bold; font-size: 0.8rem; margin-left: 10px; }
+    </style>
+</head>
+<body>
+    <div id="loading-screen" style="position:fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:9999; display:flex; align-items:center; justify-content:center; color:#6AC9E8; font-weight:800;">Verifying Access...</div>
+    <div style="padding:20px;"><a href="calculators_hub.html" style="text-decoration:none; color:#555; font-weight:800;">⬅ Back</a></div>
+
+    <div class="tool-container">
+        <h1>RCT Randomization</h1>
+        <label style="display:block; text-align:left; font-weight:800; color:#555;">Total Patients</label>
+        <input type="number" id="nTotal" placeholder="e.g. 100">
+        
+        <label style="display:block; text-align:left; font-weight:800; color:#555; margin-top:15px;">Groups</label>
+        <select id="groups">
+            <option value="2">2 Groups (Control vs Intervention)</option>
+            <option value="3">3 Groups (A vs B vs Control)</option>
+        </select>
+
+        <button class="btn-calc" onclick="generate()">Generate List</button>
+
+        <div id="list-box"></div>
+    </div>
+
+    <script>
+        const firebaseConfig = { apiKey: "AIzaSyCbE13rFgfC6ipnf8-rYR8uAywsseU7Ntg", authDomain: "curacode-c6200.firebaseapp.com", projectId: "curacode-c6200", appId: "1:773218077864:web:217dcc93c6869acb44c69d" };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        firebase.auth().onAuthStateChanged(u => { if(u) document.getElementById('loading-screen').style.display='none'; else window.location.href="../login.html"; });
+
+        function generate() {
+            const n = parseInt(document.getElementById('nTotal').value);
+            const g = parseInt(document.getElementById('groups').value);
+            if (isNaN(n) || n < g) return alert("Enter valid total");
+
+            let list = [];
+            if (g === 2) {
+                for(let i=0; i<Math.ceil(n/2); i++) list.push("A", "B");
+            } else {
+                for(let i=0; i<Math.ceil(n/3); i++) list.push("A", "B", "C");
+            }
+            
+            // Trim to exact N
+            list = list.slice(0, n);
+            
+            // Shuffle (Fisher-Yates)
+            for (let i = list.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [list[i], list[j]] = [list[j], list[i]];
+            }
+
+            const box = document.getElementById('list-box');
+            box.innerHTML = "";
+            list.forEach((val, idx) => {
+                const color = val === 'A' ? '#6AC9E8' : (val === 'B' ? '#ff7675' : '#fdcb6e');
+                box.innerHTML += `<div class="item">Patient ${idx+1} <span class="tag" style="background:${color};">Group ${val}</span></div>`;
+            });
+            box.style.display = 'block';
+        }
+    </script>
+</body>
+</html>

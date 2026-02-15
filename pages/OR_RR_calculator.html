@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>OR & RR Calculator | Cura Code</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <style>
+        /* --- GLOBAL STYLES --- */
+        body { 
+            font-family: 'Nunito', sans-serif;
+            background: linear-gradient(135deg, #f0f7fa 0%, #ffffff 100%); 
+            min-height: 100vh; margin: 0;
+            display: flex; flex-direction: column;
+        }
+
+        /* Navbar */
+        .navbar { padding: 20px; position: absolute; width: 100%; box-sizing: border-box; }
+        .back-btn { 
+            text-decoration: none; color: #555; font-weight: 800; 
+            display: flex; align-items: center; gap: 8px; cursor: pointer; transition: 0.2s;
+        }
+        .back-btn:hover { color: #6AC9E8; }
+
+        /* Main Container */
+        .tool-container {
+            max-width: 650px; margin: 80px auto; 
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(20px); padding: 40px; border-radius: 24px;
+            box-shadow: 0 20px 60px rgba(106, 201, 232, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.8); text-align: center;
+        }
+
+        h1 { color: #2D3436; margin-bottom: 20px; font-size: 1.5rem; }
+        p.sub { color: #888; font-size: 0.9rem; margin-bottom: 30px; }
+
+        /* 2x2 Input Grid */
+        .table-container {
+            display: grid; 
+            grid-template-columns: 1.5fr 1fr 1fr; 
+            gap: 15px; margin-bottom: 25px; align-items: center;
+        }
+        
+        .header-cell { font-weight: 800; color: #555; text-transform: uppercase; font-size: 0.8rem; }
+        
+        input {
+            width: 100%; padding: 12px; border: 2px solid #eef2f5; 
+            border-radius: 12px; font-family: 'Nunito'; font-size: 1rem; text-align: center;
+            transition: 0.3s; box-sizing: border-box; font-weight: 600;
+        }
+        input:focus { border-color: #6AC9E8; outline: none; background: white; }
+
+        .row-label { text-align: left; font-weight: 700; color: #2D3436; }
+        
+        .btn-calc {
+            width: 100%; padding: 16px; background: #6AC9E8; color: white;
+            border: none; border-radius: 12px; font-weight: 800; font-size: 1.1rem;
+            cursor: pointer; transition: 0.3s; margin-top: 10px;
+        }
+        .btn-calc:hover { background: #4FB3D9; transform: translateY(-3px); }
+
+        /* Results Box */
+        #results {
+            margin-top: 30px; padding: 20px;
+            background: #e3f9e5; border: 2px dashed #2ecc71;
+            border-radius: 15px; display: none; text-align: left;
+        }
+        
+        .res-row { display: flex; justify-content: space-between; margin-bottom: 15px; border-bottom: 1px solid rgba(46, 204, 113, 0.2); padding-bottom: 10px; }
+        .res-row:last-child { border: none; margin: 0; padding: 0;}
+        
+        .res-title { font-size: 1rem; font-weight: 800; color: #27ae60; }
+        .res-val { font-size: 1.5rem; font-weight: 900; color: #2ecc71; }
+        
+        .error { color: #ff7675; margin-top: 15px; font-weight: 700; font-size: 0.9rem; min-height: 20px; }
+
+        /* Loading Screen */
+        #loading-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: white; z-index: 9999; display: flex; 
+            align-items: center; justify-content: center; 
+            font-weight: 800; color: #6AC9E8; font-size: 1.2rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loading-screen">Verifying Access...</div>
+
+    <nav class="navbar">
+        <div class="back-btn" onclick="window.location.href='calculators_hub.html'">
+            <span>⬅</span> Back to Hub
+        </div>
+    </nav>
+
+    <div class="tool-container">
+        <h1>Odds Ratio & Relative Risk</h1>
+        <p class="sub">Compare event frequencies between Exposed and Control groups.</p>
+
+        <div class="table-container">
+            <div></div> <div class="header-cell">Event (Yes)</div>
+            <div class="header-cell">No Event (No)</div>
+
+            <div class="row-label">Exposed / Intervention</div>
+            <input type="number" id="a" placeholder="a" step="1">
+            <input type="number" id="b" placeholder="b" step="1">
+
+            <div class="row-label">Control / Unexposed</div>
+            <input type="number" id="c" placeholder="c" step="1">
+            <input type="number" id="d" placeholder="d" step="1">
+        </div>
+
+        <button class="btn-calc" onclick="calculateRisk()">Calculate OR & RR</button>
+
+        <div id="results">
+            <div class="res-row">
+                <div>
+                    <span class="res-title">Risk Ratio (RR)</span><br>
+                    <small style="color:#27ae60;">(Risk in Exposed / Risk in Control)</small>
+                </div>
+                <span id="rr-val" class="res-val">0.00</span>
+            </div>
+            
+            <div class="res-row">
+                <div>
+                    <span class="res-title">Odds Ratio (OR)</span><br>
+                    <small style="color:#27ae60;">(Odds in Exposed / Odds in Control)</small>
+                </div>
+                <span id="or-val" class="res-val">0.00</span>
+            </div>
+        </div>
+        
+        <div class="error" id="error-message"></div>
+    </div>
+
+    <script>
+        // 1. FIREBASE CONFIGURATION
+        const firebaseConfig = {
+            apiKey: "AIzaSyCbE13rFgfC6ipnf8-rYR8uAywsseU7Ntg",
+            authDomain: "curacode-c6200.firebaseapp.com",
+            projectId: "curacode-c6200",
+            storageBucket: "curacode-c6200.firebasestorage.app",
+            messagingSenderId: "773218077864",
+            appId: "1:773218077864:web:217dcc93c6869acb44c69d",
+            measurementId: "G-3DYN1MFLVF"
+        };
+
+        // Initialize Firebase
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const auth = firebase.auth();
+
+        // 2. SECURITY CHECK
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                document.getElementById('loading-screen').style.display = 'none';
+            } else {
+                window.location.href = "../login.html";
+            }
+        });
+
+        // 3. CALCULATOR LOGIC
+        function calculateRisk() {
+            // Inputs: a, b, c, d
+            const a = parseFloat(document.getElementById('a').value);
+            const b = parseFloat(document.getElementById('b').value);
+            const c = parseFloat(document.getElementById('c').value);
+            const d = parseFloat(document.getElementById('d').value);
+            
+            const resBox = document.getElementById('results');
+            const rrSpan = document.getElementById('rr-val');
+            const orSpan = document.getElementById('or-val');
+            const errBox = document.getElementById('error-message');
+
+            resBox.style.display = 'none';
+            errBox.innerText = '';
+
+            // Validation
+            if (isNaN(a) || isNaN(b) || isNaN(c) || isNaN(d)) {
+                errBox.innerText = 'Please fill all cells with numbers.';
+                return;
+            }
+            if (a < 0 || b < 0 || c < 0 || d < 0) {
+                errBox.innerText = 'Counts cannot be negative.';
+                return;
+            }
+
+            // Calculations
+            // Risk Exposed = a / (a + b)
+            // Risk Control = c / (c + d)
+            const riskExposed = a / (a + b);
+            const riskControl = c / (c + d);
+
+            if (riskControl === 0) {
+                errBox.innerText = 'Math Error: Risk in control group is zero (Division by Zero).';
+                return;
+            }
+
+            const RR = riskExposed / riskControl;
+
+            // Odds Ratio = (a / b) / (c / d) = (a * d) / (b * c)
+            let OR = 0;
+            if (b === 0 || c === 0) {
+                // Handle division by zero in odds
+                OR = NaN; 
+            } else {
+                OR = (a * d) / (b * c);
+            }
+
+            // Display
+            rrSpan.innerText = RR.toFixed(4);
+            orSpan.innerText = isNaN(OR) ? "Undefined (Zero count)" : OR.toFixed(4);
+            
+            resBox.style.display = 'block';
+        }
+    </script>
+</body>
+</html>

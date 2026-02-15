@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>DOI Fetcher | Cura Code</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+
+    <style>
+        body { font-family: 'Nunito'; background: linear-gradient(135deg, #f0f7fa 0%, #ffffff 100%); min-height: 100vh; margin: 0; display: flex; flex-direction: column; }
+        .navbar { padding: 20px; position: absolute; width: 100%; box-sizing: border-box; }
+        .back-btn { text-decoration: none; color: #555; font-weight: 800; display: flex; align-items: center; gap: 8px; cursor: pointer; }
+        
+        .tool-container { max-width: 600px; margin: 100px auto; background: rgba(255,255,255,0.9); padding: 50px; border-radius: 24px; box-shadow: 0 20px 60px rgba(106, 201, 232, 0.2); text-align: center; }
+        h1 { color: #2D3436; margin-bottom: 20px; }
+        
+        .search-bar { display: flex; gap: 10px; margin-bottom: 30px; }
+        input { flex: 1; padding: 15px; border: 2px solid #eef2f5; border-radius: 10px; font-size: 1rem; outline: none; }
+        input:focus { border-color: #6AC9E8; }
+        button { padding: 15px 30px; background: #6AC9E8; color: white; border: none; border-radius: 10px; font-weight: 800; cursor: pointer; }
+        button:hover { background: #4FB3D9; }
+
+        #result { text-align: left; background: #f8fbff; padding: 25px; border-radius: 15px; display: none; border: 1px solid #e3f2fd; }
+        .field { margin-bottom: 10px; }
+        .label { font-weight: 800; color: #555; font-size: 0.8rem; text-transform: uppercase; display: block; }
+        .value { font-size: 1.1rem; color: #2D3436; }
+
+        #loading-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 9999; display: flex; align-items: center; justify-content: center; color: #6AC9E8; font-weight: 800; }
+    </style>
+</head>
+<body>
+    <div id="loading-screen">Verifying Access...</div>
+    <nav class="navbar"><div class="back-btn" onclick="window.location.href='citation_hub.html'">⬅ Back to Hub</div></nav>
+
+    <div class="tool-container">
+        <h1>DOI Auto-Fetcher</h1>
+        <p style="color:#888; margin-bottom:30px;">Paste a DOI to instantly retrieve metadata.</p>
+        
+        <div class="search-bar">
+            <input type="text" id="doiInput" placeholder="e.g. 10.1038/s41586-020-2649-2">
+            <button onclick="fetchDOI()">Fetch</button>
+        </div>
+
+        <div id="result">
+            <div class="field">
+                <span class="label">Title</span>
+                <span class="value" id="res-title"></span>
+            </div>
+            <div class="field">
+                <span class="label">Journal</span>
+                <span class="value" id="res-journal"></span>
+            </div>
+            <div class="field">
+                <span class="label">Year</span>
+                <span class="value" id="res-year"></span>
+            </div>
+            <div class="field">
+                <span class="label">APA Citation</span>
+                <span class="value" id="res-apa" style="font-family:'Times New Roman';"></span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = { apiKey: "AIzaSyCbE13rFgfC6ipnf8-rYR8uAywsseU7Ntg", authDomain: "curacode-c6200.firebaseapp.com", projectId: "curacode-c6200", appId: "1:773218077864:web:217dcc93c6869acb44c69d" };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        firebase.auth().onAuthStateChanged(u => { if(u) document.getElementById('loading-screen').style.display='none'; else window.location.href="../login.html"; });
+
+        async function fetchDOI() {
+            const doi = document.getElementById('doiInput').value.trim();
+            if(!doi) return alert("Enter a DOI");
+
+            const btn = document.querySelector('button');
+            btn.innerText = "Searching...";
+            
+            try {
+                // Fetch from CrossRef
+                const response = await fetch(`https://api.crossref.org/works/${doi}`);
+                if(!response.ok) throw new Error("DOI not found");
+                
+                const data = await response.json();
+                const item = data.message;
+
+                // Extract fields safely
+                const title = item.title ? item.title[0] : "Unknown Title";
+                const journal = item['container-title'] ? item['container-title'][0] : "Unknown Journal";
+                const year = item.created ? item.created['date-parts'][0][0] : "????";
+                
+                // Construct Authors
+                let authors = "Unknown";
+                if(item.author) {
+                    authors = item.author.map(a => `${a.family}, ${a.given ? a.given[0] + '.' : ''}`).join(', ');
+                }
+
+                // Display
+                document.getElementById('res-title').innerText = title;
+                document.getElementById('res-journal').innerText = journal;
+                document.getElementById('res-year').innerText = year;
+                document.getElementById('res-apa').innerText = `${authors} (${year}). ${title}. ${journal}.`;
+                
+                document.getElementById('result').style.display = 'block';
+
+            } catch (error) {
+                alert("Error: " + error.message);
+            } finally {
+                btn.innerText = "Fetch";
+            }
+        }
+    </script>
+</body>
+</html>

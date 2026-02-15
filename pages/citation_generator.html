@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Citation Generator | Cura Code</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+
+    <style>
+        body { font-family: 'Nunito'; background: linear-gradient(135deg, #f0f7fa 0%, #ffffff 100%); min-height: 100vh; margin: 0; display: flex; flex-direction: column; }
+        .navbar { padding: 20px; position: absolute; width: 100%; box-sizing: border-box; }
+        .back-btn { text-decoration: none; color: #555; font-weight: 800; display: flex; align-items: center; gap: 8px; cursor: pointer; }
+        
+        .tool-container { max-width: 600px; margin: 80px auto; background: rgba(255,255,255,0.9); padding: 40px; border-radius: 24px; box-shadow: 0 20px 60px rgba(106, 201, 232, 0.2); }
+        h1 { color: #2D3436; margin-bottom: 20px; text-align: center; }
+
+        .input-group { margin-bottom: 15px; text-align: left; }
+        label { font-weight: 800; color: #555; font-size: 0.9rem; }
+        input, select { width: 100%; padding: 12px; border: 2px solid #eef2f5; border-radius: 10px; margin-top: 5px; box-sizing: border-box; font-family: 'Nunito'; }
+        
+        .btn-calc { width: 100%; padding: 15px; background: #6AC9E8; color: white; border: none; border-radius: 12px; font-weight: 800; cursor: pointer; margin-top: 15px; }
+        .btn-calc:hover { background: #4FB3D9; }
+
+        #result-box { margin-top: 30px; display: none; }
+        .citation-card { background: #f8fbff; border: 1px solid #e3f2fd; padding: 20px; border-radius: 15px; position: relative; }
+        .citation-text { font-family: 'Times New Roman', serif; font-size: 1.1rem; line-height: 1.5; color: #333; }
+        
+        .copy-btn { position: absolute; top: 15px; right: 15px; background: white; border: 1px solid #ddd; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 0.8rem; color: #555; }
+        .copy-btn:hover { background: #eee; }
+
+        #loading-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 9999; display: flex; align-items: center; justify-content: center; color: #6AC9E8; font-weight: 800; }
+    </style>
+</head>
+<body>
+    <div id="loading-screen">Verifying Access...</div>
+    <nav class="navbar"><div class="back-btn" onclick="window.location.href='citation_hub.html'">⬅ Back to Hub</div></nav>
+
+    <div class="tool-container">
+        <h1>Quick Citation Generator</h1>
+        
+        <div class="input-group">
+            <label>Citation Style</label>
+            <select id="style">
+                <option value="apa">APA 7 (Standard)</option>
+                <option value="vancouver">Vancouver (Medical)</option>
+                <option value="mla">MLA 9</option>
+                <option value="chicago">Chicago (Author-Date)</option>
+            </select>
+        </div>
+
+        <div class="input-group"><label>Authors (Last F.M., Last F.M.)</label><input type="text" id="authors" placeholder="e.g. Smith J.A., Doe B."></div>
+        <div class="input-group"><label>Year</label><input type="text" id="year" placeholder="2023"></div>
+        <div class="input-group"><label>Title of Article</label><input type="text" id="title" placeholder="Study of..."></div>
+        <div class="input-group"><label>Journal / Source Name</label><input type="text" id="source" placeholder="Journal of Medicine"></div>
+        
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+            <div class="input-group"><label>Volume(Issue)</label><input type="text" id="vol" placeholder="12(3)"></div>
+            <div class="input-group"><label>Page Range</label><input type="text" id="pages" placeholder="100-105"></div>
+        </div>
+
+        <button class="btn-calc" onclick="generate()">Generate Citation</button>
+
+        <div id="result-box">
+            <div class="citation-card">
+                <button class="copy-btn" onclick="copyText()"><i class="fas fa-copy"></i> Copy</button>
+                <div id="citation-output" class="citation-text"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = { apiKey: "AIzaSyCbE13rFgfC6ipnf8-rYR8uAywsseU7Ntg", authDomain: "curacode-c6200.firebaseapp.com", projectId: "curacode-c6200", appId: "1:773218077864:web:217dcc93c6869acb44c69d" };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        firebase.auth().onAuthStateChanged(u => { if(u) document.getElementById('loading-screen').style.display='none'; else window.location.href="../login.html"; });
+
+        function generate() {
+            const style = document.getElementById('style').value;
+            const auth = document.getElementById('authors').value.trim();
+            const year = document.getElementById('year').value.trim();
+            const title = document.getElementById('title').value.trim();
+            const source = document.getElementById('source').value.trim();
+            const vol = document.getElementById('vol').value.trim();
+            const pages = document.getElementById('pages').value.trim();
+
+            if(!auth || !title) return alert("Author and Title are required.");
+
+            let cit = "";
+
+            if(style === 'apa') {
+                // Smith, J. A. (2023). Title. *Journal*, *Vol*(Issue), Pages.
+                cit = `${auth} (${year}). ${title}. <i>${source}</i>, <i>${vol}</i>, ${pages}.`;
+            } 
+            else if (style === 'vancouver') {
+                // Smith JA. Title. Journal. 2023;Vol(Issue):Pages.
+                cit = `${auth.replace(/\./g, '')}. ${title}. ${source}. ${year};${vol}:${pages}.`;
+            }
+            else if (style === 'mla') {
+                // Smith, John. "Title." *Journal*, vol. 12, no. 3, 2023, pp. 100-105.
+                cit = `${auth}. "${title}." <i>${source}</i>, vol. ${vol.split('(')[0]}, ${year}, pp. ${pages}.`;
+            }
+            else {
+                // Chicago
+                cit = `${auth}. ${year}. "${title}." <i>${source}</i> ${vol}: ${pages}.`;
+            }
+
+            document.getElementById('citation-output').innerHTML = cit;
+            document.getElementById('result-box').style.display = 'block';
+        }
+
+        function copyText() {
+            const text = document.getElementById('citation-output').innerText;
+            navigator.clipboard.writeText(text);
+            alert("Copied to clipboard!");
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>IQR to Mean & SD | Cura Code</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <style>
+        /* --- GLOBAL STYLES --- */
+        body { 
+            font-family: 'Nunito', sans-serif;
+            background: linear-gradient(135deg, #f0f7fa 0%, #ffffff 100%); 
+            min-height: 100vh; margin: 0;
+            display: flex; flex-direction: column;
+        }
+
+        /* Navbar */
+        .navbar { padding: 20px; position: absolute; width: 100%; box-sizing: border-box; }
+        .back-btn { 
+            text-decoration: none; color: #555; font-weight: 800; 
+            display: flex; align-items: center; gap: 8px; cursor: pointer; transition: 0.2s;
+        }
+        .back-btn:hover { color: #6AC9E8; }
+
+        /* Main Container */
+        .tool-container {
+            max-width: 500px; margin: 80px auto; 
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(20px); padding: 40px; border-radius: 24px;
+            box-shadow: 0 20px 60px rgba(106, 201, 232, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.8); text-align: center;
+        }
+
+        h1 { color: #2D3436; margin-bottom: 10px; font-size: 1.5rem; }
+        p.sub { color: #888; font-size: 0.9rem; margin-bottom: 30px; }
+
+        .input-group { margin-bottom: 20px; text-align: left; }
+        label { display: block; font-weight: 700; color: #666; margin-bottom: 8px; font-size: 0.9rem; }
+        
+        input {
+            width: 100%; padding: 12px; border: 2px solid #eef2f5; 
+            border-radius: 12px; font-family: 'Nunito'; font-size: 1rem;
+            transition: 0.3s; box-sizing: border-box; font-weight: 600;
+        }
+        input:focus { border-color: #6AC9E8; outline: none; background: white; }
+
+        .btn-calc {
+            width: 100%; padding: 16px; background: #6AC9E8; color: white;
+            border: none; border-radius: 12px; font-weight: 800; font-size: 1.1rem;
+            cursor: pointer; transition: 0.3s; margin-top: 10px;
+        }
+        .btn-calc:hover { background: #4FB3D9; transform: translateY(-3px); }
+
+        /* Result Box */
+        #results {
+            margin-top: 30px; padding: 20px;
+            background: #e3f9e5; border: 2px dashed #2ecc71;
+            border-radius: 15px; display: none; animation: popIn 0.3s ease;
+            text-align: left;
+        }
+        @keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        .res-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .res-label { font-size: 0.9rem; font-weight: 700; color: #27ae60; }
+        .res-value { font-size: 1.4rem; font-weight: 900; color: #2ecc71; }
+        .formula-note { font-size: 0.75rem; color: #aaa; margin-top: 10px; display: block; text-align: center; }
+
+        .error { color: #ff7675; margin-top: 15px; font-weight: 700; font-size: 0.9rem; min-height: 20px; }
+
+        /* Loading Screen */
+        #loading-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: white; z-index: 9999; display: flex; 
+            align-items: center; justify-content: center; 
+            font-weight: 800; color: #6AC9E8; font-size: 1.2rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loading-screen">Verifying Access...</div>
+
+    <nav class="navbar">
+        <div class="back-btn" onclick="window.location.href='calculators_hub.html'">
+            <span>⬅</span> Back to Hub
+        </div>
+    </nav>
+
+    <div class="tool-container">
+        <h1>IQR to Mean & SD</h1>
+        <p class="sub">Convert Median and Interquartile Range (Q1-Q3) to Mean and SD.</p>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+            <div class="input-group">
+                <label>Q1 (25th)</label>
+                <input type="number" id="q1Val" placeholder="Q1" step="any">
+            </div>
+            <div class="input-group">
+                <label>Median</label>
+                <input type="number" id="medVal" placeholder="Median" step="any">
+            </div>
+            <div class="input-group">
+                <label>Q3 (75th)</label>
+                <input type="number" id="q3Val" placeholder="Q3" step="any">
+            </div>
+        </div>
+
+        <button class="btn-calc" onclick="calculateIQR()">Calculate Parameters</button>
+
+        <div id="results">
+            <div class="res-row">
+                <span class="res-label">Estimated Mean</span>
+                <span id="res-mean" class="res-value">0.000</span>
+            </div>
+            <div class="res-row">
+                <span class="res-label">Estimated SD</span>
+                <span id="res-sd" class="res-value">0.000</span>
+            </div>
+            <span class="formula-note">Method: Wan et al. (2014)</span>
+        </div>
+        
+        <div class="error" id="error-message"></div>
+    </div>
+
+    <script>
+        // 1. FIREBASE CONFIGURATION
+        const firebaseConfig = {
+            apiKey: "AIzaSyCbE13rFgfC6ipnf8-rYR8uAywsseU7Ntg",
+            authDomain: "curacode-c6200.firebaseapp.com",
+            projectId: "curacode-c6200",
+            storageBucket: "curacode-c6200.firebasestorage.app",
+            messagingSenderId: "773218077864",
+            appId: "1:773218077864:web:217dcc93c6869acb44c69d",
+            measurementId: "G-3DYN1MFLVF"
+        };
+
+        // Initialize Firebase
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const auth = firebase.auth();
+
+        // 2. SECURITY CHECK
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                document.getElementById('loading-screen').style.display = 'none';
+            } else {
+                window.location.href = "../login.html";
+            }
+        });
+
+        // 3. CALCULATOR LOGIC
+        function calculateIQR() {
+            const q1 = parseFloat(document.getElementById('q1Val').value);
+            const med = parseFloat(document.getElementById('medVal').value);
+            const q3 = parseFloat(document.getElementById('q3Val').value);
+            
+            const resBox = document.getElementById('results');
+            const meanSpan = document.getElementById('res-mean');
+            const sdSpan = document.getElementById('res-sd');
+            const errBox = document.getElementById('error-message');
+
+            resBox.style.display = 'none';
+            errBox.innerText = '';
+
+            // Validation
+            if (isNaN(q1) || isNaN(med) || isNaN(q3)) {
+                errBox.innerText = 'Please enter valid numbers.';
+                return;
+            }
+            if (q1 > med || med > q3) {
+                errBox.innerText = 'Order error: Must be Q1 ≤ Median ≤ Q3.';
+                return;
+            }
+
+            // Wan et al. (2014) Approximation
+            // Mean = (Q1 + m + Q3) / 3
+            const meanEst = (q1 + med + q3) / 3;
+
+            // SD = (Q3 - Q1) / 1.35
+            // Note: 1.35 is the standard divisor for normal distribution approximation
+            const sdEst = (q3 - q1) / 1.35;
+
+            // Display
+            meanSpan.innerText = meanEst.toFixed(4);
+            sdSpan.innerText = sdEst.toFixed(4);
+            resBox.style.display = 'block';
+        }
+    </script>
+</body>
+</html>

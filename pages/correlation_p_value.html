@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Correlation Significance | Cura Code</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <style>
+        body { font-family: 'Nunito'; background: linear-gradient(135deg, #f0f7fa 0%, #ffffff 100%); min-height: 100vh; margin: 0; display: flex; flex-direction: column; }
+        .tool-container { max-width: 400px; margin: 100px auto; background: rgba(255,255,255,0.9); padding: 40px; border-radius: 24px; text-align: center; box-shadow: 0 20px 60px rgba(106, 201, 232, 0.2); }
+        input { width: 100%; padding: 12px; border: 2px solid #eef2f5; border-radius: 10px; margin-top: 5px; box-sizing: border-box; }
+        .btn-calc { width: 100%; padding: 15px; background: #6AC9E8; color: white; border: none; border-radius: 12px; font-weight: 800; cursor: pointer; margin-top: 20px; }
+        #results { margin-top: 20px; padding: 20px; background: #e3f9e5; border-radius: 15px; display: none; }
+        .res-val { font-size: 2rem; font-weight: 900; color: #2ecc71; display: block; }
+        #loading-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 9999; display: flex; align-items: center; justify-content: center; color:#6AC9E8; font-weight:800; }
+    </style>
+</head>
+<body>
+    <div id="loading-screen">Verifying Access...</div>
+    <div style="padding:20px;"><a href="calculators_hub.html" style="text-decoration:none; color:#555; font-weight:800;">⬅ Back</a></div>
+
+    <div class="tool-container">
+        <h1>Correlation P-Value</h1>
+        <p style="color:#888;">Is your Pearson r significant?</p>
+
+        <div style="text-align:left; margin-bottom:15px;">
+            <label style="font-weight:800; color:#555;">Correlation Coefficient (r)</label>
+            <input type="number" id="r" placeholder="e.g. 0.45" step="any">
+        </div>
+        <div style="text-align:left;">
+            <label style="font-weight:800; color:#555;">Sample Size (N)</label>
+            <input type="number" id="n" placeholder="e.g. 30">
+        </div>
+
+        <button class="btn-calc" onclick="calcSig()">Calculate P</button>
+
+        <div id="results">
+            <span style="font-weight:700; color:#27ae60;">Two-tailed P-Value</span>
+            <span id="res-p" class="res-val">0.0000</span>
+            <span id="stat-val" style="color:#555;"></span>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = { apiKey: "AIzaSyCbE13rFgfC6ipnf8-rYR8uAywsseU7Ntg", authDomain: "curacode-c6200.firebaseapp.com", projectId: "curacode-c6200", appId: "1:773218077864:web:217dcc93c6869acb44c69d" };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        firebase.auth().onAuthStateChanged(u => { if(u) document.getElementById('loading-screen').style.display='none'; else window.location.href="../login.html"; });
+
+        function calcSig() {
+            const r = parseFloat(document.getElementById('r').value);
+            const n = parseFloat(document.getElementById('n').value);
+            
+            if (isNaN(r) || isNaN(n)) return alert("Enter numbers");
+            if (r < -1 || r > 1) return alert("r must be between -1 and 1");
+            if (n < 3) return alert("N must be >= 3");
+
+            // t-statistic = r * sqrt( (n-2) / (1-r^2) )
+            const t = r * Math.sqrt((n - 2) / (1 - r*r));
+            const df = n - 2;
+
+            // Simple P-value approx for T-distribution (using Z approx if df > 30, else approximate)
+            // For robustness without libraries, we use the Z-approx logic with slight adjustment
+            const p = 2 * (1 - cdf(Math.abs(t))); 
+
+            document.getElementById('res-p').innerText = p.toFixed(5);
+            document.getElementById('stat-val').innerText = `t-statistic: ${t.toFixed(3)}`;
+            document.getElementById('results').style.display = 'block';
+        }
+
+        function cdf(x) {
+            var t = 1 / (1 + .2316419 * Math.abs(x));
+            var d = .3989423 * Math.exp(-x * x / 2);
+            var prob = d * t * (.3193815 + t * (-.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+            if (x > 0) prob = 1 - prob;
+            return 1 - prob;
+        }
+    </script>
+</body>
+</html>

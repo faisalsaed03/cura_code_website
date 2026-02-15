@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>P-Value Calculator | Cura Code</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <style>
+        /* Reuse styles for consistency */
+        body { font-family: 'Nunito', sans-serif; background: linear-gradient(135deg, #f0f7fa 0%, #ffffff 100%); min-height: 100vh; margin: 0; display: flex; flex-direction: column; }
+        .tool-container { max-width: 400px; margin: 100px auto; background: rgba(255,255,255,0.9); padding: 40px; border-radius: 24px; text-align: center; box-shadow: 0 20px 60px rgba(106, 201, 232, 0.2); }
+        input { width: 100%; padding: 12px; border: 2px solid #eef2f5; border-radius: 12px; margin-top: 10px; box-sizing: border-box; }
+        .btn-calc { width: 100%; padding: 15px; background: #6AC9E8; color: white; border: none; border-radius: 12px; font-weight: 800; cursor: pointer; margin-top: 20px; }
+        .res-box { margin-top: 20px; padding: 20px; background: #e3f9e5; border-radius: 15px; display: none; }
+    </style>
+</head>
+<body>
+    <div id="loading-screen" style="position:fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:9999; display:flex; align-items:center; justify-content:center; color:#6AC9E8; font-weight:800;">Verifying Access...</div>
+    <div style="padding:20px;"><a href="calculators_hub.html" style="text-decoration:none; color:#555; font-weight:800;">⬅ Back</a></div>
+
+    <div class="tool-container">
+        <h1>P-Value from Z-Score</h1>
+        <label style="font-weight:bold; color:#666;">Enter Z-Score</label>
+        <input type="number" id="zInput" placeholder="e.g. 1.96" step="any">
+        
+        <button class="btn-calc" onclick="calcP()">Calculate P-Value</button>
+
+        <div id="res" class="res-box">
+            <span style="color:#27ae60; font-weight:800;">Two-tailed P-Value</span>
+            <span id="pVal" style="display:block; font-size:2rem; font-weight:900; color:#2ecc71;">0.0000</span>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = { apiKey: "AIzaSyCbE13rFgfC6ipnf8-rYR8uAywsseU7Ntg", authDomain: "curacode-c6200.firebaseapp.com", projectId: "curacode-c6200", appId: "1:773218077864:web:217dcc93c6869acb44c69d" };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        firebase.auth().onAuthStateChanged(u => { if(u) document.getElementById('loading-screen').style.display='none'; else window.location.href="../login.html"; });
+
+        function calcP() {
+            const z = parseFloat(document.getElementById('zInput').value);
+            if (isNaN(z)) return alert("Enter a number");
+
+            // Approximation of standard normal CDF
+            const absZ = Math.abs(z);
+            const p = 1 / (1 + Math.exp(-1.6 * absZ - 0.07 * Math.pow(absZ, 3))); // Sigmoid approximation
+            // More precise approximation usually needed, but this works for basic. Let's use Error Function approx for better accuracy.
+            
+            // Error Function Approximation
+            const t = 1 / (1 + 0.2316419 * absZ);
+            const d = 0.3989423 * Math.exp(-z * z / 2);
+            let prob = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+            if (z > 0) prob = 1 - prob;
+            
+            // Two-tailed
+            const pValue = 2 * (1 - (z > 0 ? prob : 1 - prob));
+            
+            document.getElementById('pVal').innerText = pValue.toFixed(5);
+            document.getElementById('res').style.display = 'block';
+        }
+    </script>
+</body>
+</html>

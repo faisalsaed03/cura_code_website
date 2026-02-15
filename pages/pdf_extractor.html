@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>PDF Extractor & Converter | Cura Code</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root { --primary: #6AC9E8; --dark: #1e1e1e; --panel: #f8f9fa; --text: #2D3436; }
+        
+        body { 
+            font-family: 'Inter', sans-serif; background: #f4f7fa; 
+            margin: 0; min-height: 100vh; display: flex; flex-direction: column;
+            color: var(--text);
+        }
+
+        /* --- NAVBAR --- */
+        .navbar {
+            padding: 15px 30px; background: white; border-bottom: 1px solid #eee;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .brand { font-weight: 800; font-size: 1.1rem; color: #333; display: flex; align-items: center; gap: 10px; }
+        .back-link { text-decoration: none; color: #666; font-weight: 600; font-size: 0.9rem; }
+
+        /* --- MAIN LAYOUT --- */
+        .container { 
+            max-width: 1000px; margin: 40px auto; padding: 0 20px; 
+            display: grid; grid-template-columns: 300px 1fr; gap: 30px; height: calc(100vh - 140px);
+        }
+
+        /* SIDEBAR (Upload & Stats) */
+        .sidebar {
+            background: white; padding: 25px; border-radius: 16px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.03); display: flex; flex-direction: column;
+        }
+        
+        .upload-box {
+            border: 2px dashed #cbd5e0; border-radius: 12px; padding: 30px 10px;
+            text-align: center; cursor: pointer; transition: 0.2s; background: #fdfdfd;
+        }
+        .upload-box:hover { border-color: var(--primary); background: #f0f9ff; }
+        .upload-icon { font-size: 2rem; color: #aaa; margin-bottom: 10px; }
+        
+        .stats { margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px; flex: 1; }
+        .stat-item { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 0.9rem; }
+        .stat-val { font-weight: 800; color: var(--primary); }
+
+        .btn-group { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+        .btn {
+            padding: 12px; border: none; border-radius: 8px; cursor: pointer; 
+            font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px;
+            transition: 0.2s; font-size: 0.95rem;
+        }
+        .btn-word { background: #2b579a; color: white; } /* Word Blue */
+        .btn-txt { background: #636e72; color: white; }
+        .btn-copy { background: #e3f2fd; color: #0984e3; }
+        .btn:hover { opacity: 0.9; transform: translateY(-2px); }
+
+        /* CONTENT AREA */
+        .content-area {
+            background: white; border-radius: 16px; overflow: hidden;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.03); display: flex; flex-direction: column;
+        }
+        
+        .tabs { display: flex; background: #f1f2f6; padding: 5px; }
+        .tab { 
+            flex: 1; text-align: center; padding: 10px; cursor: pointer; 
+            font-weight: 700; font-size: 0.9rem; color: #888; border-radius: 8px;
+        }
+        .tab.active { background: white; color: var(--primary); shadow: 0 2px 5px rgba(0,0,0,0.05); }
+
+        .view-box { padding: 30px; overflow-y: auto; flex: 1; line-height: 1.6; color: #444; font-size: 1rem; }
+        #summaryView { display: none; }
+        
+        .highlight { background-color: #fff3cd; padding: 0 2px; border-radius: 2px; }
+
+        /* Loader */
+        .loader { display: none; text-align: center; margin-top: 20px; color: var(--primary); font-weight: 800; }
+        
+        @media (max-width: 800px) { .container { grid-template-columns: 1fr; height: auto; } }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="brand"><i class="fas fa-file-alt" style="color:#6AC9E8;"></i> PDF Extractor</div>
+        <a href="pdf_hub.html" class="back-link">Exit to Hub</a>
+    </nav>
+
+    <div class="container">
+        
+        <div class="sidebar">
+            <div class="upload-box" onclick="document.getElementById('fileIn').click()">
+                <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                <div style="font-weight:600; color:#555;">Click to Upload PDF</div>
+                <div style="font-size:0.8rem; color:#aaa;">or drag and drop</div>
+                <input type="file" id="fileIn" accept="application/pdf" style="display:none" onchange="processPDF(this)">
+            </div>
+
+            <div class="loader" id="loader">Processing... <i class="fas fa-spinner fa-spin"></i></div>
+
+            <div class="stats">
+                <div class="stat-item"><span>Pages:</span> <span class="stat-val" id="pageCount">-</span></div>
+                <div class="stat-item"><span>Words:</span> <span class="stat-val" id="wordCount">-</span></div>
+                <div class="stat-item"><span>Est. Reading:</span> <span class="stat-val" id="readTime">-</span></div>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn btn-word" onclick="exportDoc()">
+                    <i class="fas fa-file-word"></i> Export to Word
+                </button>
+                <button class="btn btn-txt" onclick="exportTxt()">
+                    <i class="fas fa-file-alt"></i> Export as Text
+                </button>
+                <button class="btn btn-copy" onclick="copyAll()">
+                    <i class="fas fa-copy"></i> Copy to Clipboard
+                </button>
+            </div>
+        </div>
+
+        <div class="content-area">
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('full')">Full Text</div>
+                <div class="tab" onclick="switchTab('summary')">AI Summary (Beta)</div>
+            </div>
+
+            <div id="fullView" class="view-box">
+                <p style="color:#aaa; text-align:center; margin-top:50px;">Upload a PDF to view extracted text.</p>
+            </div>
+            
+            <div id="summaryView" class="view-box">
+                <p style="color:#aaa; text-align:center; margin-top:50px;">Upload a PDF to generate a summary.</p>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
+        let extractedText = "";
+        let docTitle = "document";
+
+        async function processPDF(input) {
+            const file = input.files[0];
+            if (!file) return;
+            
+            docTitle = file.name.replace('.pdf', '');
+            document.getElementById('loader').style.display = 'block';
+            
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+            
+            document.getElementById('pageCount').innerText = pdf.numPages;
+            
+            let fullText = "";
+            
+            // Extract text page by page
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const textContent = await page.getTextContent();
+                const pageText = textContent.items.map(item => item.str).join(' ');
+                fullText += `--- Page ${i} ---\n\n${pageText}\n\n`;
+            }
+
+            extractedText = fullText;
+            displayResults(fullText);
+            generateSummary(fullText);
+            
+            document.getElementById('loader').style.display = 'none';
+        }
+
+        function displayResults(text) {
+            const wordCount = text.split(/\s+/).length;
+            document.getElementById('wordCount').innerText = wordCount.toLocaleString();
+            document.getElementById('readTime').innerText = Math.ceil(wordCount / 200) + " min";
+            
+            // Simple formatting for display
+            document.getElementById('fullView').innerText = text;
+        }
+
+        // Basic "Extractive" Summarizer (Frequency based)
+        function generateSummary(text) {
+            // Split into sentences
+            const sentences = text.match(/[^\.!\?]+[\.!\?]+/g) || [];
+            if(sentences.length < 5) {
+                document.getElementById('summaryView').innerHTML = "<p>Text too short to summarize.</p>";
+                return;
+            }
+
+            // Word frequency map
+            const words = text.toLowerCase().match(/\b\w+\b/g);
+            const freq = {};
+            const stopWords = ['the','and','is','in','it','of','to','a','for','on','that','with','as','are','this','by'];
+            
+            words.forEach(w => {
+                if(!stopWords.includes(w) && w.length > 3) freq[w] = (freq[w] || 0) + 1;
+            });
+
+            // Score sentences
+            const scores = sentences.map((s, i) => {
+                const sWords = s.toLowerCase().match(/\b\w+\b/g) || [];
+                let score = 0;
+                sWords.forEach(w => score += (freq[w] || 0));
+                return { index: i, score: score / sWords.length, text: s }; // Normalize by length
+            });
+
+            // Get top 5 sentences
+            scores.sort((a, b) => b.score - a.score);
+            const topSentences = scores.slice(0, 5).sort((a, b) => a.index - b.index); // Reorder by flow
+
+            let html = "<h3>Key Highlights</h3><ul>";
+            topSentences.forEach(s => {
+                html += `<li style="margin-bottom:10px;">${s.text.trim()}</li>`;
+            });
+            html += "</ul>";
+
+            document.getElementById('summaryView').innerHTML = html;
+        }
+
+        // --- TABS ---
+        function switchTab(mode) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            if(mode === 'full') {
+                document.getElementById('fullView').style.display = 'block';
+                document.getElementById('summaryView').style.display = 'none';
+            } else {
+                document.getElementById('fullView').style.display = 'none';
+                document.getElementById('summaryView').style.display = 'block';
+            }
+        }
+
+        // --- EXPORT ---
+        function exportTxt() {
+            if(!extractedText) return alert("No text extracted");
+            const blob = new Blob([extractedText], { type: "text/plain" });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `${docTitle}_extracted.txt`;
+            a.click();
+        }
+
+        function exportDoc() {
+            if(!extractedText) return alert("No text extracted");
+            // Simple HTML doc creation trick
+            const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'></head><body>";
+            const footer = "</body></html>";
+            const html = header + extractedText.replace(/\n/g, "<br>") + footer;
+            
+            const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${docTitle}_converted.doc`;
+            a.click();
+        }
+
+        function copyAll() {
+            if(!extractedText) return alert("No text to copy");
+            navigator.clipboard.writeText(extractedText);
+            alert("Copied to clipboard!");
+        }
+    </script>
+
+</body>
+</html>

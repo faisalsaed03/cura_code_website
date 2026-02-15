@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CuraLab | Meta-Analysis Tool</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --primary: #6AC9E8;
+            --primary-dark: #4FB3D9;
+            --text-main: #2D3436;
+            --text-light: #636e72;
+            --bg: #f4f7fc;
+            --white: #ffffff;
+            --border: #eef2f5;
+            --input-bg: #f9fbfd;
+        }
+
+        * { box-sizing: border-box; outline: none; margin: 0; padding: 0; }
+        body { font-family: 'Nunito', sans-serif; background: var(--bg); color: var(--text-main); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+        /* HEADER & TOOLBAR */
+        .toolbar {
+            height: 70px; background: white; border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between; padding: 0 30px;
+            flex-shrink: 0; z-index: 10; box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+        }
+        .brand { font-weight: 900; font-size: 1.4rem; color: var(--primary-dark); display: flex; gap: 10px; align-items: center; text-decoration: none; }
+        
+        .nav-tabs { display: flex; gap: 5px; background: #f1f3f6; padding: 5px; border-radius: 10px; }
+        .nav-tab { 
+            padding: 8px 20px; font-weight: 700; font-size: 0.9rem; cursor: pointer; border-radius: 8px; 
+            color: #888; transition: 0.2s; 
+        }
+        .nav-tab.active { background: white; color: var(--primary-dark); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+
+        .controls { display: flex; gap: 12px; align-items: center; }
+        
+        select.modern-select {
+            padding: 10px 15px; border-radius: 10px; border: 2px solid var(--border);
+            font-size: 0.85rem; font-weight: 700; color: #555; background: var(--input-bg);
+            cursor: pointer; appearance: none; -webkit-appearance: none; -moz-appearance: none;
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23007CB2%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+            background-repeat: no-repeat; background-position: right .7em top 50%; background-size: .65em auto; padding-right: 2.5em;
+            transition: 0.2s;
+        }
+        select.modern-select:hover { border-color: var(--primary); background-color: white; }
+        select.modern-select:focus { border-color: var(--primary); outline: none; }
+
+        .btn {
+            padding: 10px 20px; border-radius: 10px; font-weight: 800; cursor: pointer; border: none; font-size: 0.9rem; transition: 0.2s; display: flex; align-items: center; gap: 8px;
+        }
+        .btn-primary { background: var(--primary); color: white; box-shadow: 0 4px 12px rgba(106, 201, 232, 0.3); }
+        .btn-primary:hover { background: var(--primary-dark); transform: translateY(-1px); }
+        .btn-outline { background: white; border: 2px solid var(--border); color: #636e72; }
+        .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+
+        /* VIEWS */
+        .view-container { flex: 1; overflow: hidden; position: relative; }
+        .view-section { display: none; height: 100%; width: 100%; overflow-y: auto; padding: 40px; }
+        .view-section.active { display: block; animation: fadein 0.3s ease; }
+        @keyframes fadein { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* TABLE STYLING - UPDATED WIDTH */
+        .table-card { 
+            background: white; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); 
+            overflow: hidden; border: 1px solid var(--border); 
+            max-width: 1200px; /* MATCHES PLOT WIDTH */
+            margin: 0 auto;
+        }
+        .data-table { width: 100%; border-collapse: collapse; min-width: 900px; }
+        .data-table th { 
+            text-align: left; padding: 12px 15px; background: #f8fbfe; color: #636e72; 
+            font-size: 0.75rem; text-transform: uppercase; border-bottom: 2px solid var(--border); font-weight: 800; letter-spacing: 0.5px;
+        }
+        .data-table td { padding: 8px 15px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+        .data-table tr:last-child td { border-bottom: none; }
+        .data-table tr:hover td { background: #fbfdfe; }
+        
+        .cell-input { 
+            width: 100%; padding: 8px 10px; border: 2px solid transparent; border-radius: 8px; 
+            font-family: 'Roboto', sans-serif; font-size: 0.9rem; font-weight: 500; color: #2D3436; 
+            background: transparent; transition: 0.2s;
+        }
+        .cell-input:hover { border-color: #eee; background: white; }
+        .cell-input:focus { border-color: var(--primary); background: white; box-shadow: 0 4px 10px rgba(106, 201, 232, 0.1); }
+        .num-cell { text-align: center; font-variant-numeric: tabular-nums; }
+
+        .add-row-bar { padding: 15px; background: #fcfcfc; border-top: 1px solid var(--border); text-align: center; }
+
+        /* CANVAS AREA - UPDATED WIDTH */
+        .plot-wrapper { 
+            display: flex; justify-content: center; padding-bottom: 50px;
+        }
+        .canvas-card { 
+            background: white; box-shadow: 0 20px 60px rgba(0,0,0,0.08); border-radius: 16px;
+            padding: 0; 
+            width: 100%; 
+            max-width: 1200px; /* MATCHES TABLE WIDTH */
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        canvas { 
+            display: block; 
+            width: 100% !important; 
+            height: auto !important; 
+        }
+
+        /* Mode Toggle */
+        .mode-toggle { display: flex; background: #eef2f5; border-radius: 10px; padding: 4px; gap: 0; margin-right: 15px; }
+        .mode-btn { 
+            padding: 8px 16px; border-radius: 8px; font-size: 0.85rem; font-weight: 800; 
+            cursor: pointer; border: none; color: #888; background: transparent; transition: 0.2s; 
+        }
+        .mode-btn.active { background: white; color: var(--primary-dark); box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
+
+    </style>
+</head>
+<body>
+
+    <div class="toolbar">
+        <a href="../dashboard.html" class="brand"><i class="fas fa-flask"></i> CuraLab</a>
+        
+        <div class="nav-tabs">
+            <div class="nav-tab active" onclick="switchView('data')">1. Data Input</div>
+            <div class="nav-tab" onclick="switchView('plot')">2. Forest Plot</div>
+        </div>
+
+        <div class="controls">
+            <div class="mode-toggle">
+                <button class="mode-btn active" id="btn-binary" onclick="setMode('binary')">Binary</button>
+                <button class="mode-btn" id="btn-continuous" onclick="setMode('continuous')">Continuous</button>
+            </div>
+
+            <select id="model-select" class="modern-select" onchange="updateCalc()">
+                <option value="fixed">Fixed Effect</option>
+                <option value="random">Random Effects</option>
+            </select>
+
+            <select id="ci-select" class="modern-select" onchange="updateCalc()">
+                <option value="90">90% CI</option>
+                <option value="95" selected>95% CI</option>
+                <option value="99">99% CI</option>
+            </select>
+
+            <select id="measure-select" class="modern-select" onchange="updateCalc()">
+                </select>
+            
+            <button class="btn btn-primary" onclick="downloadImage()"><i class="fas fa-download"></i> Save Plot</button>
+        </div>
+    </div>
+
+    <div class="view-container">
+        
+        <div id="view-data" class="view-section active">
+            <div style="max-width: 1200px; margin: 0 auto;"> <div style="margin-bottom: 25px; display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <h2 style="font-size: 1.5rem; font-weight: 800; color: #2D3436; margin-bottom: 5px;">Study Data</h2>
+                        <p style="font-size: 0.95rem; color: #666;">Enter your data below. Changes are applied automatically.</p>
+                    </div>
+                </div>
+
+                <div class="table-card">
+                    <table class="data-table" id="study-table">
+                        <thead>
+                            </thead>
+                        <tbody id="table-body">
+                            </tbody>
+                    </table>
+                    <div class="add-row-bar">
+                        <button class="btn btn-outline" style="margin: 0 auto;" onclick="addStudy()"><i class="fas fa-plus"></i> Add New Study</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-plot" class="view-section">
+            <div class="plot-wrapper">
+                <div class="canvas-card">
+                    <canvas id="curalabCanvas"></canvas>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <datalist id="subgroup-list"></datalist>
+
+    <script>
+        // --- STATE ---
+        let currentType = 'binary';
+        
+        let studiesBinary = [
+            { id: 1, subgroup: "Low Dose", name: "Mukae et al, 2022", e1: 1, n1: 140, e2: 1, n2: 141 },
+            { id: 2, subgroup: "High Dose", name: "Yotsuyanagi et al, 2024", e1: 49, n1: 604, e2: 32, n2: 605 }
+        ];
+        
+        let studiesContinuous = [
+            { id: 1, subgroup: "Trial A", name: "Smith 2020", m1: 5.2, sd1: 1.2, n1: 50, m2: 4.8, sd2: 1.1, n2: 50 },
+            { id: 2, subgroup: "Trial B", name: "Jones 2021", m1: 6.0, sd1: 1.5, n1: 60, m2: 5.1, sd2: 1.4, n2: 60 }
+        ];
+
+        // --- INIT & TOGGLE ---
+        window.onload = function() {
+            setMode('binary');
+        };
+
+        function setMode(mode) {
+            currentType = mode;
+            document.getElementById('btn-binary').className = `mode-btn ${mode==='binary'?'active':''}`;
+            document.getElementById('btn-continuous').className = `mode-btn ${mode==='continuous'?'active':''}`;
+            
+            const sel = document.getElementById('measure-select');
+            sel.innerHTML = mode === 'binary' 
+                ? `<option value="RR">Risk Ratio</option><option value="OR">Odds Ratio</option><option value="RD">Risk Difference</option>`
+                : `<option value="MD">Mean Diff</option><option value="SMD">Std. Mean Diff</option>`;
+            
+            renderTable();
+        }
+
+        function switchView(viewName) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            document.getElementById('view-' + viewName).classList.add('active');
+            document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
+            const index = viewName === 'data' ? 0 : 1;
+            document.querySelectorAll('.nav-tab')[index].classList.add('active');
+
+            if(viewName === 'plot') renderCanvas();
+        }
+
+        // --- TABLE RENDERING ---
+        function renderTable() {
+            const thead = document.querySelector('#study-table thead');
+            const tbody = document.getElementById('table-body');
+            const data = currentType === 'binary' ? studiesBinary : studiesContinuous;
+
+            if(currentType === 'binary') {
+                thead.innerHTML = `
+                    <tr>
+                        <th style="width: 20%;">Subgroup</th>
+                        <th style="width: 30%;">Study Name</th>
+                        <th style="width: 10%; text-align:center; color:#6AC9E8;">Exp. Events</th>
+                        <th style="width: 10%; text-align:center; color:#6AC9E8;">Exp. Total</th>
+                        <th style="width: 10%; text-align:center; color:#636e72;">Ctrl. Events</th>
+                        <th style="width: 10%; text-align:center; color:#636e72;">Ctrl. Total</th>
+                        <th style="width: 5%;"></th>
+                    </tr>`;
+            } else {
+                thead.innerHTML = `
+                    <tr>
+                        <th style="width: 15%;">Subgroup</th>
+                        <th style="width: 20%;">Study Name</th>
+                        <th style="width: 10%; text-align:center; color:#6AC9E8;">Exp. Mean</th>
+                        <th style="width: 8%; text-align:center; color:#6AC9E8;">Exp. SD</th>
+                        <th style="width: 8%; text-align:center; color:#6AC9E8;">Exp. Total</th>
+                        <th style="width: 10%; text-align:center; color:#636e72;">Ctrl. Mean</th>
+                        <th style="width: 8%; text-align:center; color:#636e72;">Ctrl. SD</th>
+                        <th style="width: 8%; text-align:center; color:#636e72;">Ctrl. Total</th>
+                        <th style="width: 5%;"></th>
+                    </tr>`;
+            }
+
+            tbody.innerHTML = '';
+            data.forEach((s, idx) => {
+                const tr = document.createElement('tr');
+                let cells = `
+                    <td><input type="text" class="cell-input" value="${s.subgroup||''}" onchange="updateData(${idx}, 'subgroup', this.value)" list="subgroup-list" placeholder="Optional"></td>
+                    <td><input type="text" class="cell-input" value="${s.name}" onchange="updateData(${idx}, 'name', this.value)"></td>
+                `;
+
+                if(currentType === 'binary') {
+                    cells += `
+                        <td><input type="number" class="cell-input num-cell" value="${s.e1}" onchange="updateData(${idx}, 'e1', this.value)"></td>
+                        <td><input type="number" class="cell-input num-cell" value="${s.n1}" onchange="updateData(${idx}, 'n1', this.value)"></td>
+                        <td><input type="number" class="cell-input num-cell" value="${s.e2}" onchange="updateData(${idx}, 'e2', this.value)"></td>
+                        <td><input type="number" class="cell-input num-cell" value="${s.n2}" onchange="updateData(${idx}, 'n2', this.value)"></td>
+                    `;
+                } else {
+                    cells += `
+                        <td><input type="number" class="cell-input num-cell" value="${s.m1}" onchange="updateData(${idx}, 'm1', this.value)"></td>
+                        <td><input type="number" class="cell-input num-cell" value="${s.sd1}" onchange="updateData(${idx}, 'sd1', this.value)"></td>
+                        <td><input type="number" class="cell-input num-cell" value="${s.n1}" onchange="updateData(${idx}, 'n1', this.value)"></td>
+                        <td><input type="number" class="cell-input num-cell" value="${s.m2}" onchange="updateData(${idx}, 'm2', this.value)"></td>
+                        <td><input type="number" class="cell-input num-cell" value="${s.sd2}" onchange="updateData(${idx}, 'sd2', this.value)"></td>
+                        <td><input type="number" class="cell-input num-cell" value="${s.n2}" onchange="updateData(${idx}, 'n2', this.value)"></td>
+                    `;
+                }
+
+                cells += `<td style="text-align:center;"><i class="fas fa-trash-alt" style="color:#ff7675; cursor:pointer; opacity:0.6;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.6" onclick="removeStudy(${idx})"></i></td>`;
+                tr.innerHTML = cells;
+                tbody.appendChild(tr);
+            });
+
+            const subSet = new Set(data.map(s => s.subgroup).filter(Boolean));
+            document.getElementById('subgroup-list').innerHTML = Array.from(subSet).map(s=>`<option value="${s}">`).join('');
+        }
+
+        function updateData(index, field, value) {
+            const data = currentType === 'binary' ? studiesBinary : studiesContinuous;
+            if(!['subgroup','name'].includes(field)) {
+                data[index][field] = parseFloat(value) || 0;
+            } else {
+                data[index][field] = value;
+            }
+        }
+
+        function addStudy() {
+            if(currentType === 'binary') {
+                studiesBinary.push({ id: Date.now(), subgroup:"", name:"New Study", e1:0, n1:0, e2:0, n2:0 });
+            } else {
+                studiesContinuous.push({ id: Date.now(), subgroup:"", name:"New Study", m1:0, sd1:0, n1:0, m2:0, sd2:0, n2:0 });
+            }
+            renderTable();
+        }
+
+        function removeStudy(index) {
+            if(currentType === 'binary') studiesBinary.splice(index, 1);
+            else studiesContinuous.splice(index, 1);
+            renderTable();
+        }
+
+        function updateCalc() {
+            if(document.getElementById('view-plot').classList.contains('active')) {
+                renderCanvas();
+            }
+        }
+
+        // --- MATH ENGINE ---
+        function calculateStats(s, measure, zScore) {
+            let est, se, weight, lower, upper, display;
+            let notEstimable = false;
+
+            if (currentType === 'binary') {
+                let e1=s.e1, n1=s.n1, e2=s.e2, n2=s.n2;
+                if (e1===0 && e2===0) return { ...s, est:0, weight:0, display:"Not estimable", notEstimable:true };
+                if (e1===0 || e2===0) { e1+=0.5; n1+=0.5; e2+=0.5; n2+=0.5; }
+
+                if (measure === 'RR') {
+                    est = Math.log((e1/n1) / (e2/n2));
+                    se = Math.sqrt((1/e1) - (1/n1) + (1/e2) - (1/n2));
+                } else if (measure === 'OR') {
+                    est = Math.log((e1*(n2-e2)) / (e2*(n1-e1)));
+                    se = Math.sqrt(1/e1 + 1/(n1-e1) + 1/e2 + 1/(n2-e2));
+                } else { // RD
+                    est = (e1/n1) - (e2/n2);
+                    se = Math.sqrt((e1*(n1-e1)/n1**3) + (e2*(n2-e2)/n2**3));
+                }
+            } else {
+                let m1=s.m1, sd1=s.sd1, n1=s.n1;
+                let m2=s.m2, sd2=s.sd2, n2=s.n2;
+                let pooledSD = Math.sqrt(((n1-1)*sd1*sd1 + (n2-1)*sd2*sd2) / (n1+n2-2));
+
+                if (measure === 'MD') {
+                    est = m1 - m2;
+                    se = Math.sqrt((sd1*sd1/n1) + (sd2*sd2/n2));
+                } else { // SMD
+                    est = (m1 - m2) / pooledSD;
+                    se = Math.sqrt(1/n1 + 1/n2 + (est*est)/(2*(n1+n2)));
+                }
+            }
+
+            weight = 1 / (se*se);
+            lower = est - zScore * se;
+            upper = est + zScore * se;
+
+            let valEst, valLow, valHigh;
+            if (currentType === 'binary' && measure !== 'RD') {
+                valEst = Math.exp(est); valLow = Math.exp(lower); valHigh = Math.exp(upper);
+            } else {
+                valEst = est; valLow = lower; valHigh = upper;
+            }
+            display = `${valEst.toFixed(2)} [${valLow.toFixed(2)}, ${valHigh.toFixed(2)}]`;
+
+            return { ...s, est, se, weight, lower, upper, notEstimable, display };
+        }
+
+        // --- RENDERER ---
+        function renderCanvas() {
+            const canvas = document.getElementById('curalabCanvas');
+            const ctx = canvas.getContext('2d');
+            const measure = document.getElementById('measure-select').value;
+            const model = document.getElementById('model-select').value;
+            const ciLevel = document.getElementById('ci-select').value;
+            
+            let zScore = 1.96; 
+            if(ciLevel === "90") zScore = 1.645;
+            if(ciLevel === "99") zScore = 2.576;
+
+            const isLog = (currentType === 'binary' && measure !== 'RD');
+            
+            const currentStudies = currentType === 'binary' ? studiesBinary : studiesContinuous;
+            const processed = currentStudies.map(s => calculateStats(s, measure, zScore));
+            
+            const groups = {}; const groupOrder = [];
+            processed.forEach(s => {
+                const gName = s.subgroup || "Main Analysis";
+                if(!groups[gName]) { groups[gName] = []; groupOrder.push(gName); }
+                groups[gName].push(s);
+            });
+
+            // Layout Calculation
+            const headerHeight = 70; const studyHeight = 40; const groupHeaderHeight = 40;
+            const groupFooterHeight = 70; const footerAxisHeight = 60;
+            let totalHeight = headerHeight + footerAxisHeight;
+            groupOrder.forEach(g => totalHeight += groupHeaderHeight + (groups[g].length * studyHeight) + groupFooterHeight);
+
+            // Responsive Width Logic
+            // We draw at a fixed logical width (1200px) for consistent math,
+            // but CSS scales it to 100% of the screen.
+            const width = 1200; 
+            const dpr = 2; // Retina sharpness
+            canvas.width = width * dpr; canvas.height = totalHeight * dpr;
+            
+            // Note: We DO NOT set canvas.style.width/height in pixels here. 
+            // The CSS handles display size (max-width: 100%).
+            
+            ctx.scale(dpr, dpr);
+
+            ctx.fillStyle = "white"; ctx.fillRect(0,0, width, totalHeight);
+            ctx.fillStyle = "#2D3436"; ctx.strokeStyle = "#2D3436";
+
+            // Drawing Coordinates
+            const cols = { name: 25, col1: 380, col2: 460, col3: 540, col4: 620, weight: 720, effect: 820, graph: 1000 };
+            const graphRight = 1170; const graphWidth = graphRight - cols.graph;
+
+            // X-Axis Scaling
+            let minVal = isLog ? 0.01 : -2; let maxVal = isLog ? 100 : 2;
+            if(!isLog && measure === 'MD') { minVal = -5; maxVal = 5; }
+
+            function getX(val) {
+                if (val <= 0 && isLog) return cols.graph;
+                if (isLog) return cols.graph + ((Math.log(val) - Math.log(minVal)) / (Math.log(maxVal) - Math.log(minVal))) * graphWidth;
+                return cols.graph + ((val - minVal) / (maxVal - minVal)) * graphWidth;
+            }
+
+            // --- HEADERS ---
+            ctx.font = "800 14px Nunito"; ctx.textAlign = "left"; ctx.fillText("Study or Subgroup", cols.name, 40);
+            
+            ctx.textAlign = "center"; 
+            ctx.fillStyle = "#6AC9E8"; ctx.fillText("Experimental", (cols.col1+cols.col2)/2, 20);
+            ctx.fillStyle = "#636e72"; ctx.fillText("Control", (cols.col3+cols.col4)/2, 20);
+            ctx.fillStyle = "#2D3436";
+
+            ctx.font = "700 12px Nunito";
+            ctx.textAlign = "right"; 
+            if(currentType === 'binary') {
+                ctx.fillText("Events", cols.col1-10, 40); ctx.fillText("Total", cols.col2+30, 40);
+                ctx.fillText("Events", cols.col3-10, 40); ctx.fillText("Total", cols.col4+30, 40);
+            } else {
+                ctx.fillText("Mean", cols.col1-10, 40); ctx.fillText("SD", cols.col2+30, 40);
+                ctx.fillText("Mean", cols.col3-10, 40); ctx.fillText("SD", cols.col4+30, 40);
+            }
+            
+            ctx.textAlign = "center"; ctx.fillText("Weight", cols.weight+30, 40);
+            ctx.fillText(`${measure}, ${ciLevel}% CI`, cols.effect + 60, 40);
+            ctx.fillText(`${measure}, ${ciLevel}% CI`, cols.graph + graphWidth/2, 40);
+            
+            // Header Lines
+            ctx.beginPath(); ctx.moveTo(0, 50); ctx.lineTo(width, 50); ctx.strokeStyle="#e0e0e0"; ctx.lineWidth=1; ctx.stroke();
+            const nullX = getX(isLog ? 1 : 0);
+            ctx.beginPath(); ctx.moveTo(nullX, 50); ctx.lineTo(nullX, totalHeight - 40); ctx.strokeStyle="#2D3436"; ctx.lineWidth=1; ctx.stroke();
+
+            // --- DRAW DATA ---
+            let y = 80;
+            groupOrder.forEach(gName => {
+                const grp = groups[gName];
+                ctx.font = "800 13px Nunito"; ctx.fillStyle = "#2D3436"; ctx.textAlign = "left";
+                ctx.fillText(gName, cols.name, y);
+                y += studyHeight;
+
+                let sumWX=0, sumW=0, Q=0;
+                let tot1=0, tot2=0; 
+                const groupTotalW = grp.reduce((a,b) => a + (b.notEstimable ? 0 : b.weight), 0);
+
+                grp.forEach(s => {
+                    ctx.font = "400 13px Roboto"; ctx.fillStyle = "#444"; ctx.textAlign = "left";
+                    ctx.fillText(s.name, cols.name + 15, y);
+
+                    ctx.textAlign = "right";
+                    if(currentType === 'binary') {
+                        ctx.fillText(s.e1, cols.col1-10, y); ctx.fillText(s.n1, cols.col2+30, y);
+                        ctx.fillText(s.e2, cols.col3-10, y); ctx.fillText(s.n2, cols.col4+30, y);
+                        tot1 += s.n1; tot2 += s.n2;
+                    } else {
+                        ctx.fillText(s.m1, cols.col1-10, y); ctx.fillText(s.sd1, cols.col2+30, y);
+                        ctx.fillText(s.m2, cols.col3-10, y); ctx.fillText(s.sd2, cols.col4+30, y);
+                        tot1 += s.n1; tot2 += s.n2;
+                    }
+
+                    if(!s.notEstimable) {
+                        const wPct = ((s.weight / groupTotalW) * 100).toFixed(1) + "%";
+                        ctx.textAlign = "center"; ctx.fillText(wPct, cols.weight+30, y);
+                        ctx.fillText(s.display, cols.effect + 60, y);
+
+                        const x = getX(isLog ? Math.exp(s.est) : s.est);
+                        const xL = getX(isLog ? Math.exp(s.lower) : s.lower);
+                        const xR = getX(isLog ? Math.exp(s.upper) : s.upper);
+
+                        ctx.beginPath(); ctx.moveTo(xL, y-4); ctx.lineTo(xR, y-4); ctx.strokeStyle="black"; ctx.lineWidth=1; ctx.stroke();
+                        const size = Math.max(4, (s.weight/groupTotalW)*12); 
+                        ctx.fillStyle = "#6AC9E8"; ctx.fillRect(x - size/2, y - 4 - size/2, size, size);
+                        ctx.fillStyle = "black";
+
+                        sumWX += s.weight * s.est; sumW += s.weight;
+                    } else {
+                        ctx.textAlign = "center"; ctx.fillText("Not estimable", cols.effect + 60, y);
+                    }
+                    y += studyHeight;
+                });
+
+                // --- SUMMARY ---
+                const pooledEst = sumWX / sumW;
+                grp.forEach(r => { if(!r.notEstimable) Q += r.weight * Math.pow(r.est - pooledEst, 2); });
+                const df = Math.max(grp.filter(x=>!x.notEstimable).length - 1, 0);
+                const I2 = Q <= df ? 0 : ((Q - df) / Q) * 100;
+                const pooledSE = Math.sqrt(1/sumW);
+                const Z = Math.abs(pooledEst / pooledSE);
+                const P = Math.exp(-0.717*Z - 0.416*Z*Z); 
+                const pooledLow = pooledEst - zScore * pooledSE;
+                const pooledHigh = pooledEst + zScore * pooledSE;
+
+                y += 5; ctx.font = "800 13px Nunito"; ctx.textAlign = "left"; 
+                const modelLabel = model === 'fixed' ? 'Fixed Effect' : 'Random Effects';
+                ctx.fillText(`Total (${ciLevel}% CI) [${modelLabel}]`, cols.name, y);
+                
+                if(currentType==='binary') {
+                    ctx.textAlign = "right"; ctx.fillText(tot1, cols.col2+30, y); ctx.fillText(tot2, cols.col4+30, y);
+                } else {
+                    ctx.textAlign = "right"; ctx.fillText(tot1, cols.col2+30, y); ctx.fillText(tot2, cols.col4+30, y);
+                }
+
+                ctx.textAlign = "center"; ctx.fillText("100.0%", cols.weight+30, y);
+                
+                let valEst, valLow, valHigh;
+                if(currentType === 'binary' && measure !== 'RD') {
+                    valEst = Math.exp(pooledEst); valLow = Math.exp(pooledLow); valHigh = Math.exp(pooledHigh);
+                } else {
+                    valEst = pooledEst; valLow = pooledLow; valHigh = pooledHigh;
+                }
+                ctx.fillText(`${valEst.toFixed(2)} [${valLow.toFixed(2)}, ${valHigh.toFixed(2)}]`, cols.effect + 60, y);
+
+                // Diamond
+                const dX = getX(valEst); const dL = getX(valLow); const dR = getX(valHigh);
+                ctx.beginPath(); ctx.moveTo(dL, y-4); ctx.lineTo(dX, y-9); ctx.lineTo(dR, y-4); ctx.lineTo(dX, y+1);
+                ctx.fillStyle = "black"; ctx.fill();
+
+                y += 25; ctx.font = "400 11px Roboto"; ctx.textAlign = "left";
+                ctx.fillText(`Heterogeneity: Chi² = ${Q.toFixed(2)}, df = ${df} (P=${P<0.001?'<0.01':P.toFixed(2)}); I² = ${I2.toFixed(0)}%`, cols.name, y);
+                y += 15; ctx.fillText(`Test for overall effect: Z = ${Z.toFixed(2)} (P = ${P<0.001?'<0.001':P.toFixed(3)})`, cols.name, y);
+                y += 40;
+            });
+
+            // --- BOTTOM AXIS ---
+            y = totalHeight - 25;
+            ctx.beginPath(); ctx.moveTo(cols.graph, y); ctx.lineTo(graphRight, y); ctx.strokeStyle = "black"; ctx.lineWidth=1; ctx.stroke();
+            ctx.textAlign = "center"; ctx.font = "400 11px Roboto";
+            
+            const ticks = isLog ? [0.01, 0.1, 1, 10, 100] : [minVal, (minVal+maxVal)/2, maxVal];
+            ticks.forEach(t => {
+                const tx = getX(t);
+                if (tx >= cols.graph && tx <= graphRight) {
+                    ctx.beginPath(); ctx.moveTo(tx, y); ctx.lineTo(tx, y+5); ctx.stroke();
+                    ctx.fillText(t, tx, y + 18);
+                }
+            });
+            ctx.textAlign = "left"; ctx.fillText("Favours [Experimental]", cols.graph, y+35);
+            ctx.textAlign = "right"; ctx.fillText("Favours [Control]", graphRight, y+35);
+        }
+
+        function downloadImage() { 
+            const link = document.createElement('a'); link.download = 'curalab-plot.png';
+            link.href = document.getElementById('curalabCanvas').toDataURL(); link.click(); 
+        }
+    </script>
+</body>
+</html>

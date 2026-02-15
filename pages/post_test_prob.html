@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Post-Test Probability | Cura Code</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <style>
+        body { font-family: 'Nunito'; background: linear-gradient(135deg, #f0f7fa 0%, #ffffff 100%); min-height: 100vh; margin: 0; display: flex; flex-direction: column; }
+        .tool-container { max-width: 500px; margin: 80px auto; background: rgba(255,255,255,0.9); padding: 40px; border-radius: 24px; text-align: center; box-shadow: 0 20px 60px rgba(106, 201, 232, 0.2); }
+        .input-group { text-align: left; margin-bottom: 15px; }
+        label { font-weight: 800; color: #555; }
+        input { width: 100%; padding: 12px; border: 2px solid #eef2f5; border-radius: 10px; margin-top: 5px; box-sizing: border-box; }
+        .btn-calc { width: 100%; padding: 15px; background: #6AC9E8; color: white; border: none; border-radius: 12px; font-weight: 800; cursor: pointer; margin-top: 15px; }
+        .res-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; display: none; }
+        .res-card { background: #e3f9e5; padding: 15px; border-radius: 15px; }
+        .res-val { font-size: 1.5rem; font-weight: 900; color: #2ecc71; display: block; }
+    </style>
+</head>
+<body>
+    <div id="loading-screen" style="position:fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:9999; display:flex; align-items:center; justify-content:center; color:#6AC9E8; font-weight:800;">Verifying Access...</div>
+    <div style="padding:20px;"><a href="calculators_hub.html" style="text-decoration:none; color:#555; font-weight:800;">⬅ Back</a></div>
+
+    <div class="tool-container">
+        <h1>Post-Test Probability</h1>
+        <p style="color:#888; font-size:0.9rem; margin-bottom:20px;">Calculate probability of disease after testing.</p>
+        
+        <div class="input-group">
+            <label>Pre-Test Probability (Prevalence %)</label>
+            <input type="number" id="pre" placeholder="e.g. 10">
+        </div>
+        <div class="input-group">
+            <label>Sensitivity (%)</label>
+            <input type="number" id="sens" placeholder="e.g. 90">
+        </div>
+        <div class="input-group">
+            <label>Specificity (%)</label>
+            <input type="number" id="spec" placeholder="e.g. 85">
+        </div>
+
+        <button class="btn-calc" onclick="calcPost()">Calculate</button>
+
+        <div id="results" class="res-grid">
+            <div class="res-card">
+                <span style="font-weight:700; color:#27ae60;">If Positive</span>
+                <span id="pos-prob" class="res-val">0%</span>
+            </div>
+            <div class="res-card" style="background:#ffeaa7;">
+                <span style="font-weight:700; color:#d35400;">If Negative</span>
+                <span id="neg-prob" class="res-val">0%</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = { apiKey: "AIzaSyCbE13rFgfC6ipnf8-rYR8uAywsseU7Ntg", authDomain: "curacode-c6200.firebaseapp.com", projectId: "curacode-c6200", appId: "1:773218077864:web:217dcc93c6869acb44c69d" };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        firebase.auth().onAuthStateChanged(u => { if(u) document.getElementById('loading-screen').style.display='none'; else window.location.href="../login.html"; });
+
+        function calcPost() {
+            const pre = parseFloat(document.getElementById('pre').value) / 100;
+            const sens = parseFloat(document.getElementById('sens').value) / 100;
+            const spec = parseFloat(document.getElementById('spec').value) / 100;
+
+            if ([pre,sens,spec].some(isNaN)) return alert("Fill all fields");
+
+            // Likelihood Ratios
+            const lrPos = sens / (1 - spec);
+            const lrNeg = (1 - sens) / spec;
+
+            // Pre-test Odds
+            const preOdds = pre / (1 - pre);
+
+            // Post-test Odds
+            const postOddsPos = preOdds * lrPos;
+            const postOddsNeg = preOdds * lrNeg;
+
+            // Convert back to Probability
+            const postProbPos = postOddsPos / (1 + postOddsPos);
+            const postProbNeg = postOddsNeg / (1 + postOddsNeg);
+
+            document.getElementById('pos-prob').innerText = (postProbPos * 100).toFixed(1) + "%";
+            document.getElementById('neg-prob').innerText = (postProbNeg * 100).toFixed(1) + "%";
+            document.getElementById('results').style.display = 'grid';
+        }
+    </script>
+</body>
+</html>

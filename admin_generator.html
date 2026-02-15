@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin - Voucher Generator</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        body { 
+            font-family: 'Nunito', sans-serif; 
+            padding: 40px; 
+            display: none; /* Hidden by default until we verify it's YOU */
+            flex-direction: column; 
+            align-items: center; 
+            background: #f0f7fa; 
+            min-height: 100vh;
+        }
+
+        .controls-card { 
+            background: white; 
+            padding: 30px; 
+            border-radius: 16px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05); 
+            width: 100%; 
+            max-width: 400px;
+            margin-bottom: 40px;
+            text-align: center;
+        }
+
+        h2 { margin-top: 0; color: #2D3436; }
+        label { display: block; text-align: left; font-weight: 700; margin-bottom: 5px; color: #666; font-size: 0.9rem; }
+
+        select { 
+            width: 100%; padding: 12px; margin-bottom: 20px; 
+            border-radius: 10px; border: 2px solid #eef2f5; 
+            font-family: inherit; font-size: 1rem; cursor: pointer;
+        }
+
+        button { 
+            width: 100%; padding: 14px; 
+            background: linear-gradient(135deg, #6AC9E8, #4FB3D9); 
+            color: white; border: none; border-radius: 10px; 
+            font-weight: 800; cursor: pointer; font-size: 1rem;
+            transition: 0.2s;
+        }
+        button:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(106, 201, 232, 0.3); }
+
+        /* VOUCHER DESIGN */
+        #voucher-container {
+            display: none; /* Hidden until generated */
+            margin-top: 20px;
+        }
+
+        .voucher {
+            width: 500px;
+            height: 280px;
+            background: linear-gradient(135deg, #2D3436 0%, #000000 100%);
+            border-radius: 20px;
+            position: relative;
+            color: white;
+            padding: 30px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+            overflow: hidden;
+            font-family: 'Nunito', sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        /* Decorative Elements */
+        .voucher::before {
+            content: ''; position: absolute; top: -50px; right: -50px;
+            width: 200px; height: 200px; background: rgba(106, 201, 232, 0.2);
+            border-radius: 50%; filter: blur(40px);
+        }
+        .voucher::after {
+            content: ''; position: absolute; bottom: -30px; left: -30px;
+            width: 150px; height: 150px; background: rgba(106, 201, 232, 0.1);
+            border-radius: 50%; filter: blur(30px);
+        }
+
+        .v-header { display: flex; justify-content: space-between; align-items: center; position: relative; z-index: 2; }
+        .v-logo { font-size: 1.2rem; font-weight: 900; letter-spacing: 1px; color: #6AC9E8; display: flex; align-items: center; gap: 8px; }
+        .v-title { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 2px; opacity: 0.7; }
+
+        .v-body { text-align: center; position: relative; z-index: 2; }
+        .v-label { font-size: 0.9rem; color: #aaa; margin-bottom: 5px; }
+        .v-code { 
+            font-size: 2.8rem; font-weight: 900; letter-spacing: 4px; 
+            color: white; text-shadow: 0 2px 10px rgba(106, 201, 232, 0.5);
+            font-family: 'Courier New', monospace;
+        }
+
+        .v-footer { 
+            display: flex; justify-content: space-between; align-items: flex-end; 
+            position: relative; z-index: 2; border-top: 1px solid rgba(255,255,255,0.1); 
+            padding-top: 15px; 
+        }
+        .v-info h4 { margin: 0; font-size: 1.2rem; color: #6AC9E8; }
+        .v-info p { margin: 0; font-size: 0.8rem; color: #ccc; }
+        .v-note { font-size: 0.7rem; color: #666; max-width: 150px; text-align: right; }
+
+        .download-btn {
+            margin-top: 20px;
+            background: #2ecc71;
+            width: auto; padding: 10px 30px;
+        }
+        .download-btn:hover { background: #27ae60; }
+
+        #status-msg { margin-top: 10px; font-weight: 700; min-height: 20px; }
+    </style>
+</head>
+<body>
+
+    <div class="controls-card">
+        <h2>🎟️ Access Code Generator</h2>
+        
+        <label>Select Duration</label>
+        <select id="duration">
+            <option value="36500">Lifetime (Unlimited)</option>
+            <option value="365">1 Year (365 Days)</option>
+            <option value="180">6 Months (180 Days)</option>
+            <option value="90">3 Months (90 Days)</option>
+            <option value="30">1 Month (30 Days)</option>
+            <option value="7">Trial (7 Days)</option>
+        </select>
+
+        <button onclick="generateVoucher()">Generate & Create Voucher</button>
+        <div id="status-msg"></div>
+    </div>
+
+    <div id="voucher-container">
+        <div id="voucher-capture" class="voucher">
+            <div class="v-header">
+                <div class="v-logo"><i style="font-style:normal;">🔍</i> CURA CODE</div>
+                <div class="v-title">Access Pass</div>
+            </div>
+
+            <div class="v-body">
+                <div class="v-label">ACTIVATION CODE</div>
+                <div class="v-code" id="disp-code">XXXX-XXXX</div>
+            </div>
+
+            <div class="v-footer">
+                <div class="v-info">
+                    <h4 id="disp-plan">Lifetime Access</h4>
+                    <p>Single User License</p>
+                </div>
+                <div class="v-note">
+                    Use this code at registration. Valid for one-time use only.
+                </div>
+            </div>
+        </div>
+
+        <div style="text-align: center;">
+            <button class="download-btn" onclick="downloadImage()">Download Voucher Image</button>
+        </div>
+    </div>
+
+    <script>
+        // ----------------------------------------------------
+        // 🔐 SECURITY SETTINGS (CHANGE THIS)
+        // ----------------------------------------------------
+        const ADMIN_EMAIL = "saidosama700@gmail.com"; // <--- PUT YOUR EMAIL HERE
+
+        // 1. FIREBASE CONFIG
+        const firebaseConfig = { 
+            apiKey: "AIzaSyCbE13rFgfC6ipnf8-rYR8uAywsseU7Ntg", 
+            authDomain: "curacode-c6200.firebaseapp.com", 
+            projectId: "curacode-c6200", 
+            appId: "1:773218077864:web:217dcc93c6869acb44c69d" 
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        // 2. SECURITY GUARD (Check if it's YOU)
+        auth.onAuthStateChanged(user => {
+            if (user && user.email === ADMIN_EMAIL) {
+                // If it's you, show the page
+                document.body.style.display = "flex";
+            } else {
+                // If not you, kick them to login
+                alert("⛔ ACCESS DENIED: Admins Only.");
+                window.location.href = "login.html";
+            }
+        });
+
+        // 3. GENERATE LOGIC
+        async function generateVoucher() {
+            const btn = document.querySelector('button');
+            const msg = document.getElementById('status-msg');
+            const durationVal = parseInt(document.getElementById('duration').value);
+            
+            btn.disabled = true;
+            btn.innerText = "Generating...";
+
+            // Generate Random Code (Format: ABCD-1234)
+            const part1 = Math.random().toString(36).substring(2, 6).toUpperCase();
+            const part2 = Math.random().toString(36).substring(2, 6).toUpperCase();
+            const newCode = `${part1}-${part2}`;
+
+            try {
+                // Save to Firebase
+                await db.collection('access_codes').add({
+                    code: newCode,
+                    duration: durationVal,
+                    used: false,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                // Update UI
+                document.getElementById('disp-code').innerText = newCode;
+                
+                let planName = "Standard Access";
+                if(durationVal > 30000) planName = "Lifetime Access";
+                else if(durationVal === 365) planName = "1 Year Access";
+                else if(durationVal === 30) planName = "1 Month Access";
+                else planName = `${durationVal} Days Access`;
+
+                document.getElementById('disp-plan').innerText = planName;
+
+                // Show Voucher
+                document.getElementById('voucher-container').style.display = 'block';
+                
+                msg.innerText = "Code saved to database!";
+                msg.style.color = "#2ecc71";
+
+            } catch (err) {
+                console.error(err);
+                msg.innerText = "Error: You do not have permission to write to DB.";
+                msg.style.color = "red";
+            }
+
+            btn.disabled = false;
+            btn.innerText = "Generate & Create Voucher";
+        }
+
+        // 4. DOWNLOAD LOGIC
+        function downloadImage() {
+            const element = document.getElementById('voucher-capture');
+            
+            html2canvas(element, { 
+                scale: 3, 
+                backgroundColor: null 
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = 'Cura_Code_Voucher.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Cura Code - Access Portal</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        body { 
+            font-family: 'Nunito', sans-serif; 
+            display: grid; 
+            place-items: center; 
+            min-height: 100vh; 
+            margin: 0;
+            padding: 20px; 
+            box-sizing: border-box;
+            background: linear-gradient(135deg, #f0f7fa 0%, #ffffff 100%); 
+        }
+        
+        .auth-card { 
+            background: white; width: 100%; max-width: 380px; padding: 40px; 
+            border-radius: 24px; text-align: center;
+            box-shadow: 0 20px 60px rgba(106, 201, 232, 0.25); 
+            margin: auto;
+        }
+        
+        .tabs { 
+            display: flex; margin-bottom: 30px; 
+            background: #f0f4f8; padding: 5px; border-radius: 12px; 
+        }
+        .tab { 
+            flex: 1; padding: 12px; cursor: pointer; border-radius: 10px; 
+            font-weight: 800; color: #888; transition: 0.2s; 
+        }
+        .tab.active { 
+            background: white; color: #6AC9E8; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05); 
+        }
+
+        h2 { color: #2D3436; margin: 0 0 10px 0; }
+        p { color: #aaa; font-size: 0.9rem; margin-bottom: 20px; }
+
+        input { 
+            width: 100%; padding: 14px; margin: 8px 0; 
+            border: 2px solid #eef2f5; border-radius: 12px; 
+            box-sizing: border-box; font-family: inherit; font-weight: 600;
+        }
+        input:focus { border-color: #6AC9E8; outline: none; background: #fbfdff; }
+        
+        button { 
+            width: 100%; padding: 16px; background: #6AC9E8; 
+            color: white; border: none; border-radius: 12px; 
+            font-weight: 800; cursor: pointer; margin-top: 15px; 
+            font-size: 1rem; transition: 0.2s; 
+        }
+        button:hover { background: #4FB3D9; transform: translateY(-2px); }
+        
+        .msg { margin-top: 20px; font-size: 0.85rem; color: #ff7675; font-weight: bold; min-height: 20px; }
+        .back-link { display: block; margin-top: 25px; color: #b2bec3; text-decoration: none; font-weight: 700; font-size: 0.9rem; }
+
+        .input-row { display: flex; gap: 10px; }
+
+        /* --- MOBILE RESPONSIVENESS START --- */
+        @media (max-width: 480px) {
+            body { padding: 15px; }
+            .auth-card { 
+                padding: 25px 20px; /* Reduce padding on small screens */
+                max-width: 100%; 
+            }
+            .input-row { 
+                flex-direction: column; /* Stack City and Country */
+                gap: 0; 
+            }
+            h2 { font-size: 1.5rem; }
+            .tabs { margin-bottom: 20px; }
+        }
+        /* --- MOBILE RESPONSIVENESS END --- */
+    </style>
+</head>
+<body>
+
+    <div class="auth-card">
+        <h2 id="header-title">Welcome Back</h2>
+        <p id="header-sub">Enter your details to continue.</p>
+        
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('login')">Log In</div>
+            <div class="tab" onclick="switchTab('register')">Register</div>
+        </div>
+
+        <div id="login-box">
+            <input type="email" id="l-email" placeholder="Email Address">
+            <input type="password" id="l-pass" placeholder="Password">
+            <button onclick="doLogin()">Enter Dashboard</button>
+        </div>
+
+        <div id="reg-box" style="display:none;">
+            <input type="text" id="r-name" placeholder="Full Name">
+            <input type="text" id="r-affiliation" placeholder="Affiliation (e.g. Faculty, University)">
+            
+            <div class="input-row">
+                <input type="text" id="r-city" placeholder="City">
+                <input type="text" id="r-country" placeholder="Country">
+            </div>
+
+            <input type="email" id="r-email" placeholder="Email Address">
+            <input type="tel" id="r-phone" placeholder="Phone Number">
+            <input type="password" id="r-pass" placeholder="Create Password">
+            <input type="password" id="r-pass-confirm" placeholder="Re-enter Password">
+            <input type="text" id="r-code" placeholder="Access Code" style="background:#f0f9ff; border-color:#bce0ef;">
+            <button onclick="doRegister()">Activate Account</button>
+        </div>
+
+        <div id="status" class="msg"></div>
+        <a href="index.html" class="back-link">← Back to Home</a>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCbE13rFgfC6ipnf8-rYR8uAywsseU7Ntg",
+            authDomain: "curacode-c6200.firebaseapp.com",
+            projectId: "curacode-c6200",
+            storageBucket: "curacode-c6200.firebasestorage.app",
+            messagingSenderId: "773218077864",
+            appId: "1:773218077864:web:217dcc93c6869acb44c69d"
+        };
+
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        function switchTab(mode) {
+            document.getElementById('status').innerText = "";
+            if(mode === 'login') {
+                document.getElementById('login-box').style.display = 'block';
+                document.getElementById('reg-box').style.display = 'none';
+                document.getElementById('header-title').innerText = "Welcome Back";
+                document.getElementById('header-sub').innerText = "Enter your details to continue.";
+                document.querySelectorAll('.tab')[0].classList.add('active');
+                document.querySelectorAll('.tab')[1].classList.remove('active');
+            } else {
+                document.getElementById('login-box').style.display = 'none';
+                document.getElementById('reg-box').style.display = 'block';
+                document.getElementById('header-title').innerText = "Join Cura Code";
+                document.getElementById('header-sub').innerText = "Start your research journey.";
+                document.querySelectorAll('.tab')[0].classList.remove('active');
+                document.querySelectorAll('.tab')[1].classList.add('active');
+            }
+        }
+
+        // LOGIN LOGIC
+        function doLogin() {
+            var email = document.getElementById('l-email').value;
+            var pass = document.getElementById('l-pass').value;
+            
+            if(!email || !pass) return showMsg("Please enter email and password.");
+            
+            showMsg("Logging in...", "#6AC9E8");
+            
+            auth.signInWithEmailAndPassword(email, pass)
+                .then(() => {
+                    window.location.href = "dashboard.html";
+                })
+                .catch(e => {
+                    let errMsg = e.message;
+                    if (errMsg.includes("INVALID_LOGIN_CREDENTIALS") || errMsg.includes("invalid-login-credentials")) {
+                        showMsg("Wrong email or password");
+                    } else if (e.code === 'auth/user-not-found' || e.code === 'auth/invalid-email') {
+                        showMsg("Wrong email");
+                    } else if (e.code === 'auth/wrong-password') {
+                        showMsg("Wrong password");
+                    } else {
+                        try {
+                            const jsonStart = errMsg.indexOf('{');
+                            if (jsonStart > -1) {
+                                const jsonError = JSON.parse(errMsg.substring(jsonStart));
+                                if (jsonError.error && jsonError.error.message === 'INVALID_LOGIN_CREDENTIALS') {
+                                    showMsg("Wrong email or password");
+                                    return;
+                                }
+                            }
+                        } catch(err) {}
+                        showMsg(errMsg);
+                    }
+                });
+        }
+
+        // REGISTER LOGIC
+        async function doRegister() {
+            var name = document.getElementById('r-name').value;
+            var affiliation = document.getElementById('r-affiliation').value;
+            var city = document.getElementById('r-city').value;
+            var country = document.getElementById('r-country').value;
+            var email = document.getElementById('r-email').value;
+            var phone = document.getElementById('r-phone').value;
+            var pass = document.getElementById('r-pass').value;
+            var passConfirm = document.getElementById('r-pass-confirm').value;
+            var code = document.getElementById('r-code').value.trim();
+
+            if(!name || !affiliation || !city || !country || !email || !phone || !pass || !code) return showMsg("All fields are required.");
+            if(pass !== passConfirm) return showMsg("Passwords do not match.");
+            if(pass.length < 6) return showMsg("Password must be at least 6 characters.");
+
+            showMsg("Verifying Access Code...", "#6AC9E8");
+
+            try {
+                // Check Code
+                const snapshot = await db.collection('access_codes').where('code', '==', code).get();
+                
+                if(snapshot.empty) throw new Error("Invalid Access Code");
+                
+                const codeDoc = snapshot.docs[0];
+                const codeData = codeDoc.data();
+                
+                if(codeData.used) throw new Error("This code has already been used.");
+
+                // Calculate Expiry Date
+                const durationDays = codeData.duration || 30; // Default 30 if not set
+                const now = new Date();
+                const expiryDate = new Date();
+                expiryDate.setDate(now.getDate() + durationDays);
+
+                showMsg("Creating Account...", "#6AC9E8");
+
+                // Create User
+                const cred = await auth.createUserWithEmailAndPassword(email, pass);
+                
+                // Mark Code Used
+                await db.collection('access_codes').doc(codeDoc.id).update({ used: true });
+                
+                // Save Profile with Expiry, City, and Country
+                await db.collection('users').doc(cred.user.uid).set({
+                    name: name,
+                    affiliation: affiliation,
+                    city: city,
+                    country: country,
+                    email: email,
+                    phone: phone,
+                    joined: firebase.firestore.FieldValue.serverTimestamp(),
+                    expiryDate: firebase.firestore.Timestamp.fromDate(expiryDate)
+                });
+
+                alert(`Account Active for ${durationDays} Days! Redirecting...`);
+                window.location.href = "dashboard.html";
+
+            } catch (e) {
+                if(e.message.includes("email-already-in-use")) showMsg("Email is already registered.");
+                else showMsg(e.message);
+            }
+        }
+
+        function showMsg(msg, color = "#ff7675") { 
+            const el = document.getElementById('status');
+            el.innerText = msg;
+            el.style.color = color;
+        }
+    </script>
+</body>
+</html>

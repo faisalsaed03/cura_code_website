@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Research Suite | Cura Code</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        /* --- GLOBAL STYLES --- */
+        body { 
+            font-family: 'Nunito', sans-serif;
+            background: linear-gradient(135deg, #f0f7fa 0%, #ffffff 100%); 
+            min-height: 100vh; margin: 0;
+            color: #2D3436;
+        }
+
+        /* Navbar */
+        .navbar { 
+            padding: 20px 5%; 
+            background: rgba(255,255,255,0.95); 
+            backdrop-filter: blur(10px); 
+            position: sticky; top: 0; z-index: 100;
+            display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+        }
+        .back-link { 
+            text-decoration: none; color: #555; font-weight: 800; 
+            display: flex; align-items: center; gap: 8px; transition: 0.2s; 
+        }
+        .back-link:hover { color: #6AC9E8; }
+
+        /* Container */
+        .container { max-width: 1200px; margin: 40px auto; padding: 0 20px; }
+
+        /* Header & Search */
+        .hub-header { text-align: center; margin-bottom: 60px; }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; color: #2D3436; }
+        p.sub { color: #888; font-size: 1.1rem; margin-bottom: 30px; }
+
+        .search-box {
+            position: relative; max-width: 500px; margin: 0 auto;
+        }
+        .search-box input {
+            width: 100%; padding: 15px 50px 15px 20px;
+            border: 2px solid #eef2f5; border-radius: 50px;
+            font-size: 1rem; outline: none; transition: 0.3s;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.03);
+        }
+        .search-box input:focus { border-color: #6AC9E8; box-shadow: 0 10px 25px rgba(106, 201, 232, 0.15); }
+        .search-box i {
+            position: absolute; right: 20px; top: 50%; transform: translateY(-50%);
+            color: #aaa;
+        }
+
+        /* Category Sections */
+        .category-title {
+            font-size: 1.2rem; font-weight: 800; color: #6AC9E8;
+            margin: 40px 0 20px 0; border-bottom: 2px solid #eef2f5;
+            padding-bottom: 10px; display: inline-block;
+        }
+
+        /* Grid */
+        .calc-grid { 
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); 
+            gap: 20px; 
+        }
+
+        /* Cards */
+        .calc-card {
+            background: white; padding: 25px; border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.02); border: 1px solid rgba(0,0,0,0.04);
+            text-decoration: none; color: #333; transition: 0.3s;
+            display: flex; flex-direction: column; align-items: center; text-align: center;
+        }
+        .calc-card:hover { 
+            transform: translateY(-5px); 
+            box-shadow: 0 20px 50px rgba(106, 201, 232, 0.15); 
+            border-color: #6AC9E8;
+        }
+
+        /* Icons */
+        .icon-box { 
+            width: 50px; height: 50px; border-radius: 50%; 
+            display: flex; align-items: center; justify-content: center; 
+            font-size: 1.4rem; margin-bottom: 15px; transition: 0.3s;
+        }
+        
+        /* Category Colors */
+        .cat-meta .icon-box { background: #e3f2fd; color: #0984e3; }
+        .cat-clinic .icon-box { background: #fff3e0; color: #e67e22; }
+        .cat-stat .icon-box { background: #f3e5f5; color: #8e44ad; }
+        .cat-plan .icon-box { background: #e3f9e5; color: #2ecc71; }
+
+        h3 { margin: 0 0 8px 0; font-size: 1rem; font-weight: 800; }
+        span { font-size: 0.8rem; color: #888; line-height: 1.4; }
+
+        /* No Results Message */
+        #no-results {
+            text-align: center; color: #aaa; font-weight: 700; 
+            margin-top: 50px; display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <a href="../dashboard.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+    </nav>
+
+    <div class="container">
+        
+        <div class="hub-header">
+            <h1>Research & Statistical Suite</h1>
+            <p class="sub">A comprehensive collection of specialized tools for clinical data analysis.</p>
+            
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="Search tools (e.g., 'sample size', 'mean', 'odds')..." onkeyup="filterTools()">
+                <i class="fas fa-search"></i>
+            </div>
+        </div>
+
+        <div id="tools-container">
+
+            <div class="category-section">
+                <div class="category-title">📊 Data Extraction & Meta-Analysis</div>
+                <div class="calc-grid">
+                    
+                    <a href="correlation_coefficient.html" class="calc-card cat-meta">
+                        <div class="icon-box"><i class="fas fa-project-diagram"></i></div>
+                        <h3>Correlation Coefficient</h3>
+                        <span>From Baseline, Post, and Change SD.</span>
+                    </a>
+
+                    <a href="change_from_baseline.html" class="calc-card cat-meta">
+                        <div class="icon-box"><i class="fas fa-exchange-alt"></i></div>
+                        <h3>Change from Baseline</h3>
+                        <span>Calculate Mean & SD change over time.</span>
+                    </a>
+
+                    <a href="combine_mean_sd.html" class="calc-card cat-meta">
+                        <div class="icon-box"><i class="fas fa-layer-group"></i></div>
+                        <h3>Combined Mean & SD</h3>
+                        <span>Merge multiple groups into one dataset.</span>
+                    </a>
+
+                    <a href="median_to_mean_sd.html" class="calc-card cat-meta">
+                        <div class="icon-box"><i class="fas fa-sort-numeric-down"></i></div>
+                        <h3>Median to Mean/SD</h3>
+                        <span>Estimate using Hozo/Wan methods.</span>
+                    </a>
+
+                    <a href="IQR_to_Mean_SD.html" class="calc-card cat-meta">
+                        <div class="icon-box"><i class="fas fa-sliders-h"></i></div>
+                        <h3>IQR to Mean/SD</h3>
+                        <span>Convert Median/IQR to Mean/SD.</span>
+                    </a>
+
+                    <a href="CI_to_SD.html" class="calc-card cat-meta">
+                        <div class="icon-box"><i class="fas fa-arrows-alt-h"></i></div>
+                        <h3>95% CI to SD</h3>
+                        <span>Recover SD from Confidence Intervals.</span>
+                    </a>
+
+                    <a href="SE_to_SD.html" class="calc-card cat-meta">
+                        <div class="icon-box"><i class="fas fa-chart-bar"></i></div>
+                        <h3>SE to SD</h3>
+                        <span>Standard Error to Standard Deviation.</span>
+                    </a>
+
+                    <a href="sem_to_sd.html" class="calc-card cat-meta">
+                        <div class="icon-box"><i class="fas fa-ruler-horizontal"></i></div>
+                        <h3>SEM to SD</h3>
+                        <span>Specific converter for SEM values.</span>
+                    </a>
+                </div>
+            </div>
+
+            <div class="category-section">
+                <div class="category-title">🩺 Clinical Diagnostics</div>
+                <div class="calc-grid">
+                    
+                    <a href="diagnostic_test.html" class="calc-card cat-clinic">
+                        <div class="icon-box"><i class="fas fa-stethoscope"></i></div>
+                        <h3>Diagnostic Test (2x2)</h3>
+                        <span>Sensitivity, Specificity, PPV, NPV.</span>
+                    </a>
+
+                    <a href="OR_RR_calculator.html" class="calc-card cat-clinic">
+                        <div class="icon-box"><i class="fas fa-balance-scale"></i></div>
+                        <h3>Odds & Risk Ratio</h3>
+                        <span>OR and RR for Cohort/Case-Control.</span>
+                    </a>
+
+                    <a href="nnt_calculator.html" class="calc-card cat-clinic">
+                        <div class="icon-box"><i class="fas fa-user-md"></i></div>
+                        <h3>Number Needed to Treat</h3>
+                        <span>NNT from Absolute Risk Reduction.</span>
+                    </a>
+
+                    <a href="post_test_prob.html" class="calc-card cat-clinic">
+                        <div class="icon-box"><i class="fas fa-microscope"></i></div>
+                        <h3>Post-Test Probability</h3>
+                        <span>Bayesian probability after testing.</span>
+                    </a>
+
+                    <a href="clinical_demographics.html" class="calc-card cat-clinic">
+                        <div class="icon-box"><i class="fas fa-child"></i></div>
+                        <h3>BMI & BSA</h3>
+                        <span>Body Mass Index and Surface Area.</span>
+                    </a>
+
+                </div>
+            </div>
+
+            <div class="category-section">
+                <div class="category-title">📈 Statistical Testing</div>
+                <div class="calc-grid">
+
+                    <a href="t_test_calc.html" class="calc-card cat-stat">
+                        <div class="icon-box"><i class="fas fa-equals"></i></div>
+                        <h3>Independent T-Test</h3>
+                        <span>Calculate P-values from summary data.</span>
+                    </a>
+
+                    <a href="chi_square.html" class="calc-card cat-stat">
+                        <div class="icon-box"><i class="fas fa-th-large"></i></div>
+                        <h3>Chi-Square Test</h3>
+                        <span>Compare categorical proportions.</span>
+                    </a>
+
+                    <a href="cohens_d.html" class="calc-card cat-stat">
+                        <div class="icon-box"><i class="fas fa-ruler-combined"></i></div>
+                        <h3>Cohen's d</h3>
+                        <span>Effect size for T-Tests.</span>
+                    </a>
+
+                    <a href="kappa_calc.html" class="calc-card cat-stat">
+                        <div class="icon-box"><i class="fas fa-handshake"></i></div>
+                        <h3>Cohen's Kappa</h3>
+                        <span>Inter-rater agreement reliability.</span>
+                    </a>
+
+                    <a href="p_value_z.html" class="calc-card cat-stat">
+                        <div class="icon-box"><i class="fas fa-percentage"></i></div>
+                        <h3>P-Value from Z</h3>
+                        <span>Convert Z-score to P-value.</span>
+                    </a>
+
+                    <a href="correlation_p_value.html" class="calc-card cat-stat">
+                        <div class="icon-box"><i class="fas fa-chart-line"></i></div>
+                        <h3>Correlation P-Value</h3>
+                        <span>Significance of 'r' coefficients.</span>
+                    </a>
+
+                </div>
+            </div>
+
+            <div class="category-section">
+                <div class="category-title">📋 Study Planning</div>
+                <div class="calc-grid">
+
+                    <a href="sample_size.html" class="calc-card cat-plan">
+                        <div class="icon-box"><i class="fas fa-users"></i></div>
+                        <h3>Sample Size (Means)</h3>
+                        <span>Planning for continuous data (Two groups).</span>
+                    </a>
+
+                    <a href="sample_size_proportions.html" class="calc-card cat-plan">
+                        <div class="icon-box"><i class="fas fa-users-cog"></i></div>
+                        <h3>Sample Size (%)</h3>
+                        <span>Planning for proportions (Two groups).</span>
+                    </a>
+
+                    <a href="randomization.html" class="calc-card cat-plan">
+                        <div class="icon-box"><i class="fas fa-dice"></i></div>
+                        <h3>RCT Randomization</h3>
+                        <span>Generate random allocation lists.</span>
+                    </a>
+
+                </div>
+            </div>
+
+        </div>
+
+        <div id="no-results">No calculators found matching your search.</div>
+
+    </div>
+
+    <script>
+        function filterTools() {
+            const input = document.getElementById('searchInput').value.toLowerCase();
+            const cards = document.getElementsByClassName('calc-card');
+            const categories = document.getElementsByClassName('category-section');
+            let hasResults = false;
+
+            // Filter individual cards
+            for (let i = 0; i < cards.length; i++) {
+                const title = cards[i].getElementsByTagName('h3')[0].innerText.toLowerCase();
+                const desc = cards[i].getElementsByTagName('span')[0].innerText.toLowerCase();
+                
+                if (title.includes(input) || desc.includes(input)) {
+                    cards[i].style.display = ""; // Show
+                    hasResults = true;
+                } else {
+                    cards[i].style.display = "none"; // Hide
+                }
+            }
+
+            // Hide empty categories (Optional polish)
+            for (let cat of categories) {
+                const visibleCards = cat.querySelectorAll('.calc-card:not([style*="display: none"])');
+                if (visibleCards.length === 0) {
+                    cat.style.display = "none";
+                } else {
+                    cat.style.display = "block";
+                }
+            }
+
+            // Show/Hide "No Results" message
+            document.getElementById('no-results').style.display = hasResults ? "none" : "block";
+        }
+    </script>
+
+</body>
+</html>

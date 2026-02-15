@@ -1,0 +1,4686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Workspace | Cura Code</title>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+    :root {
+        --primary: #3b82f6;
+        --primary-light: #60a5fa;
+        --primary-dark: #2563eb;
+        --secondary: #0ea5e9;
+        --accent: #7dd3fc;
+        --success: #4ade80;
+        --warning: #fbbf24;
+        --danger: #f87171;
+        --info: #60a5fa;
+        
+        --text-primary: #1e293b;
+        --text-secondary: #64748b;
+        --text-light: #94a3b8;
+        
+        --glass-bg: rgba(255, 255, 255, 0.7);
+        --glass-border: rgba(255, 255, 255, 0.18);
+        --glass-shadow: 0 8px 32px 0 rgba(59, 130, 246, 0.15);
+        
+        --bg-gradient: linear-gradient(135deg, #3b82f6 0%, #0ea5e9 100%);
+        --bg-body: linear-gradient(to bottom right, #f0f9ff, #e0f2fe, #bfdbfe);
+        
+        --card-gradient: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.7));
+        --hover-gradient: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(14, 165, 233, 0.1));
+    }
+
+    * { 
+        box-sizing: border-box; 
+        outline: none; 
+        margin: 0; 
+        padding: 0; 
+    }
+    
+    body { 
+        font-family: 'Inter', sans-serif; 
+        background: var(--bg-body);
+        background-attachment: fixed;
+        color: var(--text-primary); 
+        height: 100vh; 
+        display: flex; 
+        flex-direction: column; 
+        overflow: hidden; 
+    }
+
+    /* Glassmorphism Navbar */
+    .navbar { 
+        padding: 0 2.5rem; 
+        height: 80px; 
+        background: rgba(255, 255, 255, 0.25);
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+        box-shadow: 0 8px 32px 0 rgba(59, 130, 246, 0.1);
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center; 
+        flex-shrink: 0; 
+        z-index: 1000;
+        position: relative;
+    }
+    
+    .navbar::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(14, 165, 233, 0.05));
+        pointer-events: none;
+    }
+    
+    .nav-left { 
+        display: flex; 
+        align-items: center; 
+        gap: 2rem; 
+        position: relative;
+        z-index: 1;
+    }
+    
+    .back-btn { 
+        text-decoration: none; 
+        color: var(--text-secondary); 
+        font-weight: 600; 
+        font-size: 0.9rem; 
+        display: flex; 
+        align-items: center; 
+        gap: 0.5rem; 
+        padding: 0.6rem 1.2rem; 
+        background: rgba(255, 255, 255, 0.4);
+        backdrop-filter: blur(10px);
+        border-radius: 12px; 
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border: 1px solid rgba(255, 255, 255, 0.5);
+    }
+    
+    .back-btn:hover { 
+        background: rgba(255, 255, 255, 0.6);
+        color: var(--primary);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+    }
+    
+    .proj-name { 
+        font-family: 'Poppins', sans-serif; 
+        font-weight: 700; 
+        font-size: 1.3rem; 
+        color: var(--text-primary); 
+        border: 2px solid transparent; 
+        padding: 0.5rem 1rem; 
+        border-radius: 10px; 
+        background: transparent; 
+        width: 320px; 
+        transition: all 0.3s ease;
+    }
+    
+    .proj-name:focus { 
+        border-color: var(--primary); 
+        background: rgba(255, 255, 255, 0.6);
+        backdrop-filter: blur(10px);
+    }
+    
+    .edit-title-btn { 
+        cursor: pointer; 
+        color: var(--text-light); 
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+    }
+    
+    .edit-title-btn:hover { 
+        color: var(--primary);
+        transform: scale(1.1);
+    }
+    
+    /* Glass Tabs */
+    .tabs { 
+        display: flex; 
+        gap: 0.5rem; 
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(10px);
+        padding: 0.4rem; 
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        position: relative;
+        z-index: 1;
+    }
+    
+    .tab { 
+        padding: 0.7rem 1.8rem; 
+        font-size: 0.9rem; 
+        font-weight: 600; 
+        color: var(--text-secondary); 
+        cursor: pointer; 
+        border-radius: 12px; 
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .tab::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: var(--bg-gradient);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    
+    .tab span {
+        position: relative;
+        z-index: 1;
+    }
+    
+    .tab.active {
+        background: var(--bg-gradient);
+        color: white;
+        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+        transform: translateY(-2px);
+    }
+    
+    .tab:hover:not(.active) { 
+        color: var(--primary);
+        background: rgba(255, 255, 255, 0.5);
+    }
+    
+    /* View Container */
+    .view-container { 
+        flex: 1; 
+        overflow: hidden; 
+        position: relative; 
+        display: flex; 
+        flex-direction: column; 
+    }
+    
+    .view-section { 
+        display: none; 
+        height: 100%; 
+        width: 100%; 
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+    
+    .view-section.active { 
+        display: block; 
+        animation: fadeInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    @keyframes fadeInUp { 
+        from { 
+            opacity: 0; 
+            transform: translateY(20px); 
+        } 
+        to { 
+            opacity: 1; 
+            transform: translateY(0); 
+        } 
+    }
+
+    /* Overview Section */
+    #view-overview { 
+        padding: 2.5rem; 
+        max-width: 1600px; 
+        margin: 0 auto; 
+        width: 100%; 
+    }
+    
+    .overview-layout { 
+        display: grid; 
+        grid-template-columns: 1fr 1fr; 
+        grid-template-rows: auto auto; 
+        gap: 2rem; 
+    }
+    
+    /* Glass Cards */
+    .ov-card { 
+        background: var(--card-gradient);
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+        border-radius: 24px; 
+        padding: 2rem; 
+        box-shadow: var(--glass-shadow);
+        border: 1px solid var(--glass-border);
+        display: flex; 
+        flex-direction: column; 
+        height: 100%;
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .ov-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: var(--bg-gradient);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    
+    .ov-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 48px 0 rgba(59, 130, 246, 0.2);
+    }
+    
+    .ov-card:hover::before {
+        opacity: 1;
+    }
+    
+    .card-tall { height: 600px; } 
+    .card-short { height: auto; }
+    
+    h2 { 
+        margin: 0 0 1.5rem 0; 
+        font-size: 1.3rem; 
+        font-weight: 700; 
+        display: flex; 
+        align-items: center; 
+        gap: 0.8rem; 
+        color: var(--text-primary);
+        font-family: 'Poppins', sans-serif;
+        letter-spacing: -0.5px;
+    }
+    
+    h2 i {
+        background: var(--bg-gradient);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    /* Modern Inputs */
+    .modern-input { 
+        flex: 1; 
+        padding: 0.8rem 1.2rem; 
+        border: 2px solid rgba(59, 130, 246, 0.2);
+        border-radius: 12px; 
+        background: rgba(255, 255, 255, 0.6);
+        backdrop-filter: blur(10px);
+        color: var(--text-primary); 
+        font-weight: 500; 
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+        font-family: 'Inter', sans-serif;
+    }
+    
+    .modern-input:focus { 
+        border-color: var(--primary);
+        background: rgba(255, 255, 255, 0.9);
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+    }
+    
+    .modern-input::placeholder {
+        color: var(--text-light);
+    }
+    
+    /* Glass Buttons */
+    .btn-small { 
+        padding: 0.8rem 1.5rem; 
+        background: var(--bg-gradient);
+        color: white; 
+        border: none; 
+        border-radius: 12px; 
+        cursor: pointer; 
+        font-weight: 600; 
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        white-space: nowrap;
+        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .btn-small::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+        transition: left 0.5s;
+    }
+    
+    .btn-small:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+    }
+    
+    .btn-small:hover::before {
+        left: 100%;
+    }
+    
+    .btn-small:active {
+        transform: translateY(0);
+    }
+    
+    /* Task List */
+    .task-input-row { 
+        display: flex; 
+        gap: 0.8rem; 
+        margin-bottom: 1.5rem; 
+    }
+    
+    .task-list { 
+        display: flex; 
+        flex-direction: column; 
+        gap: 0.8rem; 
+        overflow-y: auto; 
+        flex: 1; 
+        padding-right: 0.5rem; 
+    }
+    
+    .task-group-header { 
+        font-size: 0.75rem; 
+        font-weight: 800; 
+        color: var(--text-light); 
+        margin: 1rem 0 0.5rem; 
+        text-transform: uppercase; 
+        letter-spacing: 1.5px; 
+        display: flex; 
+        align-items: center; 
+        gap: 0.8rem; 
+    }
+    
+    .task-group-header::after { 
+        content: ''; 
+        flex: 1; 
+        height: 2px; 
+        background: linear-gradient(to right, var(--primary), transparent);
+        opacity: 0.3;
+    }
+    
+    .task-item { 
+        display: flex; 
+        align-items: center; 
+        justify-content: space-between; 
+        padding: 1rem 1.2rem; 
+        background: rgba(255, 255, 255, 0.5);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        border-radius: 14px; 
+        transition: all 0.3s ease;
+    }
+    
+    .task-item:hover { 
+        border-color: var(--primary);
+        background: rgba(255, 255, 255, 0.7);
+        transform: translateX(4px);
+    }
+    
+    .task-status-select { 
+        padding: 0.4rem 0.8rem; 
+        border-radius: 20px; 
+        font-size: 0.75rem; 
+        font-weight: 700; 
+        border: none; 
+        cursor: pointer; 
+        text-align: center;
+        backdrop-filter: blur(10px);
+        transition: all 0.3s ease;
+    }
+    
+    .status-todo { 
+        background: rgba(251, 191, 36, 0.2); 
+        color: #d97706;
+        border: 1px solid rgba(251, 191, 36, 0.3);
+    }
+    
+    .status-inprogress { 
+        background: rgba(59, 130, 246, 0.2); 
+        color: #2563eb;
+        border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+    
+    .status-done { 
+        background: rgba(74, 222, 128, 0.2); 
+        color: #16a34a;
+        border: 1px solid rgba(74, 222, 128, 0.3);
+    }
+    
+    .task-actions { 
+        display: flex; 
+        align-items: center; 
+        gap: 0.6rem; 
+    }
+    
+    .btn-del-task { 
+        background: rgba(248, 113, 113, 0.15);
+        color: var(--danger); 
+        border: 1px solid rgba(248, 113, 113, 0.3);
+        width: 32px; 
+        height: 32px; 
+        border-radius: 10px; 
+        cursor: pointer; 
+        display: flex; 
+        align-items: center; 
+        justify-content: center; 
+        transition: all 0.3s ease;
+        font-size: 0.85rem;
+    }
+    
+    .btn-del-task:hover { 
+        background: var(--danger);
+        color: white;
+        transform: scale(1.1) rotate(5deg);
+    }
+
+    /* Chat Window */
+    .chat-window { 
+        flex: 1; 
+        background: rgba(255, 255, 255, 0.3);
+        backdrop-filter: blur(10px);
+        padding: 1.5rem; 
+        overflow-y: auto; 
+        display: flex; 
+        flex-direction: column; 
+        gap: 1rem; 
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 16px; 
+        margin-bottom: 1rem; 
+    }
+    
+    .chat-row { 
+        display: flex; 
+        gap: 0.8rem; 
+        align-items: flex-end; 
+        width: 100%; 
+    }
+    
+    .chat-bubble { 
+        max-width: 75%; 
+        padding: 1rem 1.3rem; 
+        border-radius: 20px; 
+        font-size: 0.9rem; 
+        line-height: 1.5; 
+        position: relative;
+        backdrop-filter: blur(10px);
+        animation: bubblePop 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+        opacity: 0;
+    }
+    
+    @keyframes bubblePop { 
+        0% { 
+            opacity: 0; 
+            transform: scale(0.8) translateY(10px); 
+        } 
+        100% { 
+            opacity: 1; 
+            transform: scale(1) translateY(0); 
+        } 
+    }
+    
+    .chat-row.sent { 
+        flex-direction: row-reverse; 
+    }
+    
+    .chat-row.sent .chat-bubble { 
+        background: var(--bg-gradient);
+        color: white; 
+        border-bottom-right-radius: 6px;
+        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+    }
+    
+    .chat-row.received .chat-bubble { 
+        background: rgba(255, 255, 255, 0.6);
+        color: var(--text-primary); 
+        border-bottom-left-radius: 6px;
+        border: 1px solid rgba(255, 255, 255, 0.5);
+    }
+    
+    .chat-row.private .chat-bubble { 
+        background: rgba(251, 191, 36, 0.2);
+        color: #d97706;
+        border: 1px solid rgba(251, 191, 36, 0.3);
+    }
+    
+    .chat-meta { 
+        font-size: 0.7rem; 
+        font-weight: 600; 
+        margin-top: 0.4rem; 
+        display: block;
+        opacity: 0.8;
+    }
+    
+    .chat-input-area { 
+        display: flex; 
+        gap: 0.8rem; 
+        align-items: center; 
+    }
+    
+    .chat-select { 
+        width: 130px; 
+        padding: 0.8rem; 
+        border-radius: 12px; 
+        border: 2px solid rgba(59, 130, 246, 0.2);
+        background: rgba(255, 255, 255, 0.6);
+        backdrop-filter: blur(10px);
+        font-weight: 600; 
+        color: var(--text-secondary); 
+        font-size: 0.85rem;
+        transition: all 0.3s ease;
+    }
+    
+    .chat-select:focus {
+        border-color: var(--primary);
+        background: rgba(255, 255, 255, 0.9);
+    }
+    
+    .chat-input { 
+        flex: 1; 
+        padding: 1rem 1.5rem; 
+        border-radius: 25px; 
+        border: 2px solid rgba(59, 130, 246, 0.2);
+        background: rgba(255, 255, 255, 0.6);
+        backdrop-filter: blur(10px);
+        outline: none; 
+        transition: all 0.3s ease;
+        font-family: 'Inter', sans-serif;
+    }
+    
+    .chat-input:focus { 
+        border-color: var(--primary);
+        background: rgba(255, 255, 255, 0.9);
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+    }
+    
+    .btn-send { 
+        width: 48px; 
+        height: 48px; 
+        border-radius: 50%; 
+        background: var(--bg-gradient);
+        color: white; 
+        border: none; 
+        cursor: pointer; 
+        display: flex; 
+        align-items: center; 
+        justify-content: center; 
+        font-size: 1.1rem; 
+        transition: all 0.3s ease;
+        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+    }
+    
+    .btn-send:hover { 
+        transform: scale(1.1) rotate(15deg);
+        box-shadow: 0 8px 25px rgba(59, 130, 246, 0.5);
+    }
+
+    /* Team Members */
+    .team-list { 
+        display: flex; 
+        flex-direction: column; 
+        gap: 0.8rem; 
+    }
+    
+    .team-member { 
+        display: flex; 
+        align-items: center; 
+        justify-content: space-between; 
+        padding: 1rem 1.2rem; 
+        background: rgba(255, 255, 255, 0.5);
+        backdrop-filter: blur(10px);
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        transition: all 0.3s ease;
+    }
+    
+    .team-member:hover {
+        background: rgba(255, 255, 255, 0.7);
+        transform: translateX(4px);
+    }
+    
+    .member-info { 
+        display: flex; 
+        align-items: center; 
+        gap: 0.8rem; 
+        flex: 1;
+    }
+    
+    .avatar { 
+        width: 40px; 
+        height: 40px; 
+        background: var(--bg-gradient);
+        color: white; 
+        border-radius: 12px; 
+        display: flex; 
+        align-items: center; 
+        justify-content: center; 
+        font-weight: 700; 
+        font-size: 1rem;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+    
+    .member-name {
+        flex: 1;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+    
+    .permission-badge {
+        font-size: 0.7rem;
+        font-weight: 700;
+        padding: 0.3rem 0.6rem;
+        border-radius: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-left: 0.5rem;
+    }
+    
+    .badge-owner {
+        background: rgba(59, 130, 246, 0.15);
+        color: var(--primary);
+        border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+    
+    .badge-manager {
+        background: rgba(74, 222, 128, 0.15);
+        color: #16a34a;
+        border: 1px solid rgba(74, 222, 128, 0.3);
+    }
+    
+    .member-actions {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+    }
+    
+    .toggle-manager-btn {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        border-radius: 8px;
+        border: 1px solid rgba(74, 222, 128, 0.3);
+        background: rgba(74, 222, 128, 0.1);
+        color: #16a34a;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .toggle-manager-btn:hover {
+        background: rgba(74, 222, 128, 0.2);
+        transform: translateY(-2px);
+    }
+    
+    .toggle-manager-btn.active {
+        background: var(--success);
+        color: white;
+        border-color: var(--success);
+    }
+    
+    .remove-user-btn { 
+        color: var(--danger); 
+        cursor: pointer; 
+        font-size: 1rem;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 10px;
+        background: rgba(248, 113, 113, 0.1);
+        border: 1px solid rgba(248, 113, 113, 0.2);
+        transition: all 0.3s ease;
+    }
+    
+    .remove-user-btn:hover { 
+        background: var(--danger);
+        color: white;
+        transform: scale(1.1) rotate(5deg);
+    }
+
+    /* Screening Section */
+    #view-screening { 
+        padding: 2.5rem; 
+        width: 100%; 
+        max-width: 1600px; 
+        margin: 0 auto; 
+    }
+    
+    .screening-phases { 
+        display: flex; 
+        gap: 1rem; 
+        margin-bottom: 2rem; 
+        width: 100%; 
+    }
+    
+    .phase-tab { 
+        flex: 1; 
+        text-align: center; 
+        padding: 1.2rem; 
+        background: rgba(255, 255, 255, 0.4);
+        backdrop-filter: blur(10px);
+        border-radius: 16px; 
+        font-weight: 700; 
+        color: var(--text-secondary); 
+        cursor: pointer; 
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border: 1px solid rgba(255, 255, 255, 0.5);
+    }
+    
+    .phase-tab.active { 
+        background: var(--bg-gradient);
+        color: white;
+        box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+        transform: translateY(-4px);
+    }
+    
+    .phase-tab:hover:not(.active) { 
+        background: rgba(255, 255, 255, 0.6);
+        color: var(--primary);
+        transform: translateY(-2px);
+    }
+
+    /* Import Stats Card */
+    .import-stats-card { 
+        background: var(--bg-gradient);
+        padding: 2rem; 
+        border-radius: 24px; 
+        margin-bottom: 2rem; 
+        box-shadow: 0 12px 40px rgba(59, 130, 246, 0.4);
+        color: white; 
+        display: grid; 
+        grid-template-columns: 1fr 1fr; 
+        gap: 2rem;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .import-stats-card::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -20%;
+        width: 200px;
+        height: 200px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 50%;
+        filter: blur(60px);
+    }
+    
+    .import-stat-item { 
+        display: flex; 
+        flex-direction: column; 
+        align-items: center; 
+        justify-content: center;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .import-stat-value { 
+        font-size: 3rem; 
+        font-weight: 900; 
+        line-height: 1; 
+        margin-bottom: 0.6rem;
+        font-family: 'Poppins', sans-serif;
+        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    }
+    
+    .import-stat-label { 
+        font-size: 0.9rem; 
+        font-weight: 600; 
+        text-transform: uppercase; 
+        letter-spacing: 1.5px;
+        opacity: 0.95;
+    }
+
+    /* REDESIGNED UNIFIED TOOLBAR */
+    .unified-screening-toolbar {
+        background: rgba(255, 255, 255, 0.6);
+        backdrop-filter: blur(20px);
+        padding: 1.5rem;
+        border-radius: 20px;
+        margin-bottom: 2rem;
+        box-shadow: var(--glass-shadow);
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        display: flex;
+        flex-direction: column;
+        gap: 1.2rem;
+    }
+
+    .toolbar-row {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .toolbar-search {
+        flex: 2;
+        min-width: 300px;
+        position: relative;
+    }
+
+    .toolbar-search input {
+        width: 100%;
+        padding: 0.9rem 1.2rem 0.9rem 3rem;
+        border: 2px solid rgba(59, 130, 246, 0.2);
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.7);
+        font-size: 0.95rem;
+        transition: all 0.3s ease;
+    }
+
+    .toolbar-search input:focus {
+        border-color: var(--primary);
+        background: white;
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+    }
+
+    .toolbar-search i {
+        position: absolute;
+        left: 1.2rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-light);
+        font-size: 1.1rem;
+    }
+
+    .toolbar-search-status {
+        position: absolute;
+        right: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+    }
+
+    .toolbar-filter-group {
+        display: flex;
+        gap: 0.8rem;
+        align-items: center;
+    }
+
+    .toolbar-toggle {
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+        padding: 0.8rem 1.2rem;
+        background: rgba(255, 255, 255, 0.7);
+        border-radius: 12px;
+        border: 2px solid rgba(59, 130, 246, 0.2);
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .toolbar-toggle:hover {
+        background: rgba(255, 255, 255, 0.9);
+        border-color: var(--primary);
+    }
+
+    .toolbar-toggle input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+        accent-color: var(--primary);
+    }
+
+    .toolbar-toggle label {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .toolbar-actions {
+        display: flex;
+        gap: 0.8rem;
+        margin-left: auto;
+    }
+
+    /* Range Slider in Toolbar - FIXED VERSION */
+    .toolbar-range {
+        flex: 1;
+        min-width: 250px;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .toolbar-range-label {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .range-slider-container-inline {
+        position: relative;
+        height: 40px;
+        display: flex;
+        align-items: center;
+    }
+
+    .range-slider-track {
+        position: absolute;
+        width: 100%;
+        height: 6px;
+        background: rgba(226, 232, 240, 0.5);
+        border-radius: 3px;
+        pointer-events: none;
+    }
+
+    .range-slider-range {
+        position: absolute;
+        height: 6px;
+        background: var(--bg-gradient);
+        border-radius: 3px;
+        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+        pointer-events: none;
+    }
+
+    .range-slider {
+        position: relative;
+        width: 100%;
+        height: 40px;
+    }
+
+    .range-slider input[type="range"] {
+        position: absolute;
+        width: 100%;
+        height: 6px;
+        background: transparent;
+        pointer-events: all;
+        -webkit-appearance: none;
+        appearance: none;
+        margin: 0;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+
+    .range-slider input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 20px;
+        height: 20px;
+        background: white;
+        border: 3px solid var(--primary);
+        border-radius: 50%;
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+        transition: all 0.3s ease;
+        pointer-events: all;
+        position: relative;
+        z-index: 3;
+    }
+
+    .range-slider input[type="range"]::-webkit-slider-thumb:hover {
+        transform: scale(1.2);
+        box-shadow: 0 3px 12px rgba(59, 130, 246, 0.5);
+    }
+
+    .range-slider input[type="range"]::-moz-range-thumb {
+        width: 20px;
+        height: 20px;
+        background: white;
+        border: 3px solid var(--primary);
+        border-radius: 50%;
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+        transition: all 0.3s ease;
+        pointer-events: all;
+    }
+
+    .range-slider input[type="range"]::-moz-range-thumb:hover {
+        transform: scale(1.2);
+    }
+
+    .range-slider input[type="range"]::-webkit-slider-runnable-track {
+        width: 100%;
+        height: 6px;
+        background: transparent;
+    }
+
+    .range-slider input[type="range"]::-moz-range-track {
+        width: 100%;
+        height: 6px;
+        background: transparent;
+    }
+
+    /* Ensure max slider is on top */
+    .range-slider input[type="range"]#range-max {
+        z-index: 4;
+    }
+
+    .range-slider input[type="range"]#range-min {
+        z-index: 3;
+    }
+
+    .range-values-inline {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 0.3rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+    }
+
+    /* Screening Stats */
+    .screening-stats { 
+        display: flex; 
+        gap: 1rem; 
+        margin-bottom: 2rem; 
+        flex-wrap: wrap; 
+    }
+    
+    .stat-card { 
+        background: rgba(255, 255, 255, 0.6);
+        backdrop-filter: blur(20px);
+        padding: 1.2rem 1.8rem; 
+        border-radius: 16px; 
+        box-shadow: var(--glass-shadow);
+        border: 2px solid transparent;
+        min-width: 140px; 
+        text-align: center; 
+        cursor: pointer; 
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .stat-card:hover { 
+        transform: translateY(-4px);
+        box-shadow: 0 12px 35px rgba(59, 130, 246, 0.2);
+        background: rgba(255, 255, 255, 0.8);
+    }
+    
+    .stat-card.active { 
+        border-color: var(--primary);
+        background: var(--hover-gradient);
+        transform: translateY(-4px);
+        box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
+    }
+    
+    .stat-val { 
+        font-size: 2rem; 
+        font-weight: 900; 
+        display: block;
+        font-family: 'Poppins', sans-serif;
+        background: var(--bg-gradient);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    .stat-label { 
+        font-size: 0.75rem; 
+        color: var(--text-secondary); 
+        font-weight: 700; 
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-top: 0.3rem;
+    }
+
+    /* Screening Header */
+    .screening-header { 
+        background: rgba(255, 255, 255, 0.6);
+        backdrop-filter: blur(20px);
+        padding: 2rem; 
+        border-radius: 20px; 
+        box-shadow: var(--glass-shadow);
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        margin-bottom: 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 2rem;
+        flex-wrap: wrap;
+    }
+    
+    .controls-left { 
+        flex: 2; 
+        display: flex; 
+        flex-direction: column; 
+        gap: 1rem; 
+    }
+    
+    .controls-row { 
+        display: flex; 
+        gap: 1rem; 
+        width: 100%; 
+    }
+    
+    .sc-input { 
+        flex: 1; 
+        min-width: 150px; 
+        padding: 0.8rem 1.2rem; 
+        border: 2px solid rgba(59, 130, 246, 0.2);
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(10px);
+        font-family: 'Inter', sans-serif; 
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+    }
+    
+    .sc-input:focus {
+        border-color: var(--primary);
+        background: white;
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+    }
+
+    /* Manual Add Form */
+    .manual-add-form { 
+        display: flex; 
+        flex-direction: column; 
+        gap: 1rem; 
+        margin-bottom: 1rem; 
+    }
+    
+    .form-group { 
+        display: flex; 
+        flex-direction: column; 
+        gap: 0.5rem; 
+    }
+    
+    .form-label { 
+        font-size: 0.75rem; 
+        font-weight: 800; 
+        color: var(--text-secondary); 
+        text-transform: uppercase; 
+        letter-spacing: 1px; 
+    }
+    
+    .form-label.required::after { 
+        content: " *"; 
+        color: var(--danger);
+    }
+    
+    textarea.sc-input { 
+        min-height: 120px; 
+        resize: vertical;
+        font-family: 'Inter', sans-serif;
+    }
+    
+    .optional-fields { 
+        margin-top: 1rem; 
+    }
+    
+    .optional-fields-toggle { 
+        font-size: 0.85rem; 
+        color: var(--primary); 
+        cursor: pointer; 
+        font-weight: 700; 
+        display: inline-flex; 
+        align-items: center; 
+        gap: 0.5rem;
+        transition: all 0.3s ease;
+    }
+    
+    .optional-fields-toggle:hover { 
+        color: var(--primary-dark);
+        transform: translateX(4px);
+    }
+    
+    .optional-fields-content { 
+        margin-top: 1rem; 
+    }
+
+    /* Paper Grid - FIXED LAYOUT */
+    .paper-grid { 
+        display: grid; 
+        grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); 
+        gap: 1.5rem; 
+    }
+    
+    .paper-card { 
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(20px);
+        border-radius: 20px; 
+        padding: 1.8rem; 
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        position: relative; 
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex; 
+        flex-direction: column; 
+        gap: 1rem; 
+        cursor: pointer;
+        box-shadow: var(--glass-shadow);
+        min-height: 320px;
+    }
+    
+    .paper-card:hover { 
+        transform: translateY(-6px);
+        box-shadow: 0 16px 48px rgba(59, 130, 246, 0.2);
+        border-color: var(--primary);
+    }
+    
+    .paper-card.duplicate-disabled {
+        opacity: 0.5;
+        background: rgba(248, 113, 113, 0.05);
+        border-left: 4px solid var(--danger);
+    }
+    
+    .paper-card.selected {
+        border: 2px solid var(--primary);
+        background: rgba(59, 130, 246, 0.05);
+    }
+    
+    /* FIXED POSITIONING - No more overlaps */
+    .paper-checkbox {
+        position: absolute;
+        top: 1.5rem;
+        left: 1.5rem;
+        width: 22px;
+        height: 22px;
+        cursor: pointer;
+        accent-color: var(--primary);
+        z-index: 10;
+    }
+    
+    .card-number { 
+        position: absolute; 
+        top: 1.5rem; 
+        right: 1.5rem; 
+        background: var(--bg-gradient);
+        color: white; 
+        font-size: 0.75rem; 
+        font-weight: 800; 
+        padding: 0.5rem 0.9rem; 
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+        z-index: 9;
+    }
+    
+    .duplicate-badge {
+        position: absolute;
+        top: 4.2rem;
+        right: 1.5rem;
+        background: rgba(248, 113, 113, 0.15);
+        color: var(--danger);
+        font-size: 0.7rem;
+        font-weight: 800;
+        padding: 0.4rem 0.8rem;
+        border-radius: 10px;
+        border: 1px solid rgba(248, 113, 113, 0.3);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        z-index: 8;
+    }
+
+    /* VIEW DUPLICATES BUTTON - NEW */
+    .btn-view-duplicates {
+        position: absolute;
+        top: 7.2rem;
+        right: 1.5rem;
+        background: rgba(251, 191, 36, 0.15);
+        color: #d97706;
+        border: 1px solid rgba(251, 191, 36, 0.3);
+        padding: 0.5rem 0.9rem;
+        border-radius: 10px;
+        cursor: pointer;
+        font-size: 0.75rem;
+        font-weight: 700;
+        transition: all 0.3s ease;
+        z-index: 7;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+
+    .btn-view-duplicates:hover {
+        background: rgba(251, 191, 36, 0.25);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+    }
+
+    /* CONFLICT OVERRIDE BADGE */
+    .conflict-override-badge {
+        position: absolute;
+        top: 1.5rem;
+        left: 4.5rem;
+        background: rgba(251, 191, 36, 0.15);
+        color: #d97706;
+        font-size: 0.7rem;
+        font-weight: 800;
+        padding: 0.4rem 0.8rem;
+        border-radius: 10px;
+        border: 1px solid rgba(251, 191, 36, 0.3);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        z-index: 7;
+    }
+
+    /* DELETE BUTTON - FIXED POSITION */
+    .btn-del-paper {
+        position: absolute;
+        top: 10.2rem;
+        right: 1.5rem;
+        background: rgba(248, 113, 113, 0.15);
+        color: var(--danger);
+        border: 1px solid rgba(248, 113, 113, 0.3);
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
+        font-size: 0.9rem;
+        z-index: 6;
+    }
+
+    .btn-del-paper:hover {
+        background: var(--danger);
+        color: white;
+        transform: scale(1.1) rotate(5deg);
+    }
+    
+    /* PAPER TITLE - CLEAR SPACING */
+    .paper-title { 
+        font-weight: 700; 
+        color: var(--text-primary); 
+        font-size: 1.05rem; 
+        line-height: 1.5; 
+        margin-top: 3.5rem;
+        margin-left: 0;
+        padding-right: 3rem;
+        font-family: 'Poppins', sans-serif;
+    }
+    
+    .paper-source { 
+        font-size: 0.8rem; 
+        color: var(--text-secondary); 
+        background: rgba(59, 130, 246, 0.1);
+        padding: 0.4rem 0.9rem; 
+        border-radius: 20px; 
+        align-self: flex-start; 
+        border: 1px solid rgba(59, 130, 246, 0.2);
+        font-weight: 600;
+    }
+
+    /* OWNER OVERRIDE CONTROLS - FIXED SPACING */
+    .owner-override-controls {
+        margin-top: 1rem;
+        padding: 1rem;
+        background: rgba(251, 191, 36, 0.1);
+        border: 2px dashed rgba(251, 191, 36, 0.3);
+        border-radius: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 0.8rem;
+    }
+
+    .owner-override-controls .override-label {
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: #d97706;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .owner-override-btns {
+        display: flex;
+        gap: 0.6rem;
+        flex-wrap: wrap;
+    }
+
+    .btn-override {
+        flex: 1;
+        min-width: 120px;
+        padding: 0.7rem;
+        border-radius: 10px;
+        border: 2px solid transparent;
+        font-weight: 700;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.4rem;
+    }
+
+    .btn-override-include {
+        background: rgba(74, 222, 128, 0.2);
+        color: #16a34a;
+        border-color: rgba(74, 222, 128, 0.3);
+    }
+
+    .btn-override-include:hover {
+        background: rgba(74, 222, 128, 0.3);
+        border-color: #16a34a;
+        transform: translateY(-2px);
+    }
+
+    .btn-override-exclude {
+        background: rgba(248, 113, 113, 0.2);
+        color: #dc2626;
+        border-color: rgba(248, 113, 113, 0.3);
+    }
+
+    .btn-override-exclude:hover {
+        background: rgba(248, 113, 113, 0.3);
+        border-color: #dc2626;
+        transform: translateY(-2px);
+    }
+
+    .btn-override-clear {
+        background: rgba(148, 163, 184, 0.2);
+        color: var(--text-secondary);
+        border-color: rgba(148, 163, 184, 0.3);
+        width: 100%;
+    }
+
+    .btn-override-clear:hover {
+        background: rgba(148, 163, 184, 0.3);
+        transform: translateY(-2px);
+    }
+
+    /* Vote Actions - FIXED SPACING */
+    .vote-actions { 
+        display: flex; 
+        gap: 0.6rem; 
+        margin-top: auto; 
+        padding-top: 1.2rem; 
+        border-top: 1px solid rgba(0, 0, 0, 0.05);
+        align-items: center; 
+    }
+    
+    .btn-vote { 
+        flex: 1; 
+        padding: 0.8rem; 
+        border-radius: 12px; 
+        border: 2px solid transparent;
+        font-weight: 700; 
+        font-size: 0.85rem; 
+        cursor: pointer; 
+        opacity: 0.7;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex; 
+        flex-direction: column; 
+        align-items: center; 
+        gap: 0.3rem;
+        backdrop-filter: blur(10px);
+    }
+    
+    .btn-vote:hover:not(:disabled) { 
+        opacity: 1;
+        transform: translateY(-2px);
+    }
+    
+    .btn-vote.selected { 
+        opacity: 1;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+        transform: translateY(-2px);
+    }
+    
+    .btn-vote:disabled { 
+        cursor: not-allowed;
+        opacity: 0.3;
+        transform: none;
+        box-shadow: none;
+        filter: grayscale(100%);
+    }
+
+    .vote-include { 
+        background: rgba(74, 222, 128, 0.2);
+        color: #16a34a;
+        border-color: rgba(74, 222, 128, 0.3);
+    }
+    
+    .vote-include.selected {
+        background: rgba(74, 222, 128, 0.3);
+        border-color: #16a34a;
+    }
+    
+    .vote-exclude { 
+        background: rgba(248, 113, 113, 0.2);
+        color: #dc2626;
+        border-color: rgba(248, 113, 113, 0.3);
+    }
+    
+    .vote-exclude.selected {
+        background: rgba(248, 113, 113, 0.3);
+        border-color: #dc2626;
+    }
+    
+    .vote-maybe { 
+        background: rgba(251, 191, 36, 0.2);
+        color: #d97706;
+        border-color: rgba(251, 191, 36, 0.3);
+    }
+    
+    .vote-maybe.selected {
+        background: rgba(251, 191, 36, 0.3);
+        border-color: #d97706;
+    }
+    
+    /* CLEAR VOTE BUTTON - FIXED TO PREVENT OVERLAP */
+    .btn-clear-vote { 
+        width: 100%; 
+        padding: 0.7rem; 
+        background: rgba(148, 163, 184, 0.2);
+        color: var(--text-secondary); 
+        border: 1px solid rgba(148, 163, 184, 0.3);
+        border-radius: 10px; 
+        cursor: pointer; 
+        font-weight: 700; 
+        font-size: 0.8rem; 
+        transition: all 0.3s ease;
+        margin-top: 0.5rem;
+        backdrop-filter: blur(10px);
+    }
+    
+    .btn-clear-vote:hover:not(:disabled) { 
+        background: rgba(148, 163, 184, 0.3);
+        transform: translateY(-2px);
+    }
+    
+    .btn-clear-vote:disabled { 
+        opacity: 0.4; 
+        cursor: not-allowed;
+    }
+    
+    .note-input { 
+        width: 100%; 
+        border: 2px solid rgba(59, 130, 246, 0.2);
+        border-radius: 10px; 
+        padding: 0.7rem; 
+        font-family: 'Inter', sans-serif; 
+        font-size: 0.85rem; 
+        margin-top: 0.5rem; 
+        resize: vertical; 
+        min-height: 60px;
+        background: rgba(255, 255, 255, 0.5);
+        backdrop-filter: blur(10px);
+        transition: all 0.3s ease;
+    }
+    
+    .note-input:focus {
+        border-color: var(--primary);
+        background: rgba(255, 255, 255, 0.8);
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+    }
+    
+    .reason-select { 
+        width: 100%; 
+        padding: 0.7rem; 
+        border: 2px solid rgba(59, 130, 246, 0.2);
+        border-radius: 10px; 
+        font-size: 0.8rem; 
+        margin-bottom: 0.5rem; 
+        background: rgba(255, 255, 255, 0.6);
+        backdrop-filter: blur(10px);
+        font-weight: 600; 
+        color: var(--text-secondary);
+        transition: all 0.3s ease;
+    }
+    
+    .reason-select:focus {
+        border-color: var(--primary);
+        background: rgba(255, 255, 255, 0.9);
+    }
+
+    /* Pagination */
+    .pagination-container { 
+        display: flex; 
+        justify-content: center; 
+        align-items: center; 
+        gap: 0.8rem; 
+        margin-top: 2.5rem; 
+        padding: 1.5rem; 
+        background: rgba(255, 255, 255, 0.6);
+        backdrop-filter: blur(20px);
+        border-radius: 16px; 
+        box-shadow: var(--glass-shadow);
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        flex-wrap: wrap; 
+    }
+    
+    .pagination-btn { 
+        padding: 0.8rem 1.2rem; 
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(10px);
+        border: 2px solid rgba(59, 130, 246, 0.2);
+        border-radius: 10px; 
+        cursor: pointer; 
+        font-weight: 700; 
+        color: var(--text-secondary); 
+        transition: all 0.3s ease;
+    }
+    
+    .pagination-btn:hover:not(:disabled) { 
+        background: var(--bg-gradient);
+        color: white;
+        border-color: transparent;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+    
+    .pagination-btn:disabled { 
+        opacity: 0.3; 
+        cursor: not-allowed;
+    }
+    
+    .pagination-page { 
+        padding: 0.8rem 1.2rem; 
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(10px);
+        border: 2px solid rgba(59, 130, 246, 0.2);
+        border-radius: 10px; 
+        cursor: pointer; 
+        font-weight: 700; 
+        color: var(--text-secondary); 
+        transition: all 0.3s ease;
+        min-width: 48px; 
+        text-align: center; 
+    }
+    
+    .pagination-page.active { 
+        background: var(--bg-gradient);
+        color: white;
+        border-color: transparent;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+    
+    .pagination-page:hover:not(.active) { 
+        background: rgba(255, 255, 255, 0.9);
+        border-color: var(--primary);
+        transform: translateY(-2px);
+    }
+    
+    .pagination-info { 
+        font-size: 0.85rem; 
+        color: var(--text-secondary); 
+        font-weight: 700; 
+    }
+
+    /* Modals */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(8px);
+        z-index: 2000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .modal-box { 
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(30px);
+        padding: 2.5rem; 
+        border-radius: 24px; 
+        width: 90%;
+        max-width: 500px; 
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        max-height: 85vh;
+        overflow-y: auto;
+    }
+
+    /* DUPLICATES MODAL - NEW */
+    .duplicates-modal-box {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(30px);
+        padding: 2.5rem;
+        border-radius: 24px;
+        width: 90%;
+        max-width: 900px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        max-height: 85vh;
+        overflow-y: auto;
+    }
+
+    .duplicates-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        margin: 1.5rem 0;
+    }
+
+    .duplicate-item {
+        background: rgba(255, 255, 255, 0.6);
+        backdrop-filter: blur(10px);
+        padding: 1.5rem;
+        border-radius: 16px;
+        border: 2px solid rgba(59, 130, 246, 0.2);
+        transition: all 0.3s ease;
+    }
+
+    .duplicate-item:hover {
+        border-color: var(--primary);
+        background: rgba(255, 255, 255, 0.8);
+        transform: translateX(4px);
+    }
+
+    .duplicate-item.is-master {
+        border-color: var(--success);
+        background: rgba(74, 222, 128, 0.1);
+    }
+
+    .duplicate-item-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+
+    .duplicate-item-badge {
+        font-size: 0.7rem;
+        font-weight: 800;
+        padding: 0.4rem 0.8rem;
+        border-radius: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .badge-master {
+        background: rgba(74, 222, 128, 0.2);
+        color: #16a34a;
+        border: 1px solid rgba(74, 222, 128, 0.3);
+    }
+
+    .badge-duplicate {
+        background: rgba(248, 113, 113, 0.2);
+        color: var(--danger);
+        border: 1px solid rgba(248, 113, 113, 0.3);
+    }
+
+    .duplicate-item-title {
+        font-weight: 700;
+        color: var(--text-primary);
+        font-size: 1rem;
+        line-height: 1.5;
+        margin-bottom: 0.8rem;
+    }
+
+    .duplicate-item-meta {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+    }
+
+    .duplicate-item-meta span {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+
+    .import-modal { 
+        position: fixed; 
+        top: 0; 
+        left: 0; 
+        width: 100%; 
+        height: 100%; 
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(8px);
+        z-index: 3000; 
+        display: none; 
+        align-items: center; 
+        justify-content: center; 
+    }
+    
+    .import-modal-box { 
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(30px);
+        padding: 2.5rem; 
+        border-radius: 24px; 
+        width: 90%; 
+        max-width: 750px; 
+        max-height: 85vh; 
+        overflow-y: auto; 
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.5);
+    }
+    
+    .import-preview-list { 
+        max-height: 320px; 
+        overflow-y: auto; 
+        border: 2px solid rgba(59, 130, 246, 0.2);
+        border-radius: 12px; 
+        padding: 1.2rem; 
+        margin: 1.2rem 0; 
+        background: rgba(255, 255, 255, 0.5);
+        backdrop-filter: blur(10px);
+    }
+    
+    .preview-item { 
+        padding: 0.7rem; 
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        font-size: 0.85rem;
+    }
+    
+    .preview-item:last-child { 
+        border-bottom: none; 
+    }
+    
+    .preview-item.duplicate { 
+        color: var(--danger); 
+        font-weight: 600; 
+    }
+    
+  /* FIXED: Better Progress Bar Styling */
+   .progress-bar-container { 
+       width: 100%; 
+       height: 45px; 
+       background: rgba(226, 232, 240, 0.5);
+       border-radius: 12px; 
+       overflow: hidden; 
+       margin: 1.5rem 0;
+       border: 2px solid rgba(226, 232, 240, 0.8);
+       box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+   }
+   
+   .progress-bar { 
+       height: 100%; 
+       background: var(--bg-gradient);
+       transition: width 0.3s ease;
+       display: flex; 
+       align-items: center; 
+       justify-content: center; 
+       color: white; 
+       font-weight: 800; 
+       font-size: 0.95rem;
+       font-family: 'Poppins', sans-serif;
+       box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.15);
+       position: relative;
+       overflow: hidden;
+   }
+   
+   .progress-bar::before {
+       content: '';
+       position: absolute;
+       top: 0;
+       left: -100%;
+       width: 100%;
+       height: 100%;
+       background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+       animation: progressShine 2s infinite;
+   }
+   
+   @keyframes progressShine {
+       0% { left: -100%; }
+       50%, 100% { left: 100%; }
+   }
+   
+   /* FIXED: Better Progress Text Styling */
+   #progress-text {
+       text-align: center;
+       margin-top: 1.2rem;
+       padding: 1rem;
+       background: rgba(255, 255, 255, 0.6);
+       backdrop-filter: blur(10px);
+       border-radius: 12px;
+       border: 1px solid rgba(59, 130, 246, 0.2);
+       font-family: 'Inter', sans-serif;
+       line-height: 1.6;
+   }
+
+    /* Coming Soon */
+    .coming-soon-card { 
+        background: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(20px);
+        padding: 4rem; 
+        border-radius: 24px; 
+        box-shadow: var(--glass-shadow);
+        text-align: center; 
+        border: 2px dashed rgba(59, 130, 246, 0.3);
+        max-width: 450px; 
+        margin: auto;
+    }
+    
+    .badge-soon { 
+        background: rgba(251, 191, 36, 0.2);
+        color: #d97706;
+        padding: 0.5rem 1.2rem; 
+        border-radius: 12px; 
+        font-weight: 800; 
+        font-size: 0.85rem; 
+        text-transform: uppercase; 
+        letter-spacing: 1.5px;
+        border: 1px solid rgba(251, 191, 36, 0.3);
+        display: inline-block;
+        margin-top: 1rem;
+    }
+
+    /* Utility Classes */
+    .hidden { 
+        display: none !important; 
+    }
+
+    /* Scrollbar Styling */
+    ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+    }
+    
+    ::-webkit-scrollbar-track {
+        background: rgba(226, 232, 240, 0.3);
+        border-radius: 10px;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+        background: var(--bg-gradient);
+        border-radius: 10px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+        background: var(--primary-dark);
+    }
+
+    /* Responsive Design */
+    @media (max-width: 1000px) { 
+        .overview-layout { 
+            grid-template-columns: 1fr; 
+        } 
+        .card-tall { 
+            height: auto; 
+            min-height: 400px; 
+        }
+        .import-stats-card {
+            grid-template-columns: 1fr;
+        }
+        .toolbar-row {
+            flex-direction: column;
+        }
+        .toolbar-search,
+        .toolbar-range {
+            width: 100%;
+            min-width: 100%;
+        }
+    }
+    
+    @media (max-width: 768px) { 
+        .navbar { 
+            padding: 0 1rem; 
+            height: auto; 
+            min-height: 70px; 
+            flex-direction: column; 
+            gap: 1rem; 
+            padding-bottom: 1rem; 
+        } 
+        
+        .nav-left { 
+            width: 100%; 
+            justify-content: space-between; 
+        } 
+        
+        .proj-name { 
+            width: 180px; 
+            font-size: 1rem; 
+        } 
+        
+        .back-btn span { 
+            display: none; 
+        } 
+        
+        .tabs { 
+            width: 100%; 
+            overflow-x: auto; 
+            justify-content: flex-start; 
+        } 
+        
+        .tab { 
+            flex-shrink: 0; 
+            padding: 0.6rem 1.2rem; 
+        } 
+        
+        #view-overview, #view-screening { 
+            padding: 1.5rem; 
+        } 
+        
+        .overview-layout { 
+            gap: 1.5rem; 
+        } 
+        
+        .ov-card { 
+            padding: 1.5rem; 
+        } 
+        
+        .task-input-row { 
+            flex-direction: column; 
+        } 
+        
+        .task-input-row .modern-input { 
+            width: 100%; 
+            max-width: none !important; 
+        } 
+        
+        .chat-input-area { 
+            flex-direction: column; 
+            align-items: stretch; 
+        } 
+        
+        .chat-select { 
+            width: 100%; 
+        } 
+        
+        .screening-header { 
+            flex-direction: column; 
+            align-items: stretch; 
+        } 
+        
+        .sc-input { 
+            width: 100%; 
+            margin-right: 0; 
+            margin-bottom: 1rem; 
+        } 
+        
+        .paper-grid { 
+            grid-template-columns: 1fr; 
+        } 
+        
+        .modal-box, .import-modal-box, .duplicates-modal-box { 
+            width: 90%; 
+            padding: 1.5rem; 
+        } 
+        
+        .controls-row { 
+            flex-direction: column; 
+        }
+    }
+
+</style>
+</head>
+<body>
+    <div id="loading-screen">
+        <div class="loading-spinner"></div>
+        <span>Loading Workspace...</span>
+    </div>
+<nav class="navbar">
+    <div class="nav-left">
+        <a href="../dashboard.html" class="back-btn">
+            <i class="fas fa-arrow-left"></i> 
+            <span>Dashboard</span>
+        </a>
+        <div class="title-container">
+            <input type="text" class="proj-name" id="display-project-name" value="Loading..." readonly onblur="saveProjectName()" onkeypress="handleTitleKey(event)">
+            <i class="fas fa-pencil-alt edit-title-btn" id="edit-title-btn" onclick="enableTitleEdit()" style="display:none;"></i>
+        </div>
+    </div>
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab('overview')"><span>Overview</span></div>
+        <div class="tab" onclick="switchTab('manuscript')"><span>Manuscript</span></div>
+        <div class="tab" onclick="switchTab('screening')"><span>Screening</span></div>
+    </div>
+</nav>
+<div class="view-container">
+<!-- OVERVIEW TAB -->
+<div id="view-overview" class="view-section active">
+    <div class="overview-layout">
+        <div class="ov-card card-tall">
+            <h2><i class="fas fa-check-square"></i> Tasks</h2>
+            <div class="task-input-row">
+                <input type="text" id="new-task-text" class="modern-input" placeholder="What needs to be done?" onkeypress="if(event.key==='Enter') addTask()">
+                <select id="new-task-assignee" class="modern-input" style="max-width:140px;"></select>
+                <button class="btn-small" onclick="addTask()"><i class="fas fa-plus"></i> Add</button>
+            </div>
+            <div id="task-list-container" class="task-list"></div>
+        </div>
+        
+        <div class="ov-card card-tall" id="chat-card">
+            <h2><i class="fas fa-comments"></i> Team Chat</h2>
+            <div id="chat-window" class="chat-window"></div>
+            <div class="chat-input-area">
+                <select id="chat-recipient" class="chat-select">
+                    <option value="everyone">Everyone</option>
+                </select>
+                <input type="text" id="chat-msg-in" class="chat-input" placeholder="Type message..." onkeypress="if(event.key==='Enter') sendChat()">
+                <button class="btn-send" onclick="sendChat()">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+        
+        <div class="ov-card card-short">
+            <h2><i class="fas fa-chart-line"></i> Project Status</h2>
+            <select id="proj-progress" class="modern-input" onchange="updateProgress()">
+                <option value="Not Started">Not Started</option>
+                <option value="Protocol">Protocol</option>
+                <option value="Search">Search</option>
+                <option value="Screening">Screening</option>
+                <option value="Extraction">Extraction</option>
+                <option value="Drafting">Drafting</option>
+                <option value="Submitted">Submitted</option>
+            </select>
+        </div>
+        
+        <div class="ov-card card-short" id="team-card">
+            <h2><i class="fas fa-users"></i> Team Members</h2>
+            <div class="task-input-row" id="invite-box" style="display:none;">
+                <input type="email" id="invite-email" class="modern-input" placeholder="User Email (user@example.com)">
+                <button class="btn-small" onclick="inviteUser()"><i class="fas fa-user-plus"></i> Invite</button>
+            </div>
+            <p id="team-permission-msg" style="font-size:0.85rem; color:var(--text-light); font-style:italic; background:rgba(255,255,255,0.5); padding:1rem; border-radius:12px; text-align:center; margin-bottom:1rem; display:none;">
+                Only the Owner can manage the team.
+            </p>
+            <div id="team-list" class="team-list"></div>
+        </div>
+    </div>
+</div>
+
+<!-- MANUSCRIPT TAB -->
+<div id="view-manuscript" class="view-section">
+    <div class="coming-soon-card">
+        <i class="fas fa-file-alt" style="font-size:3.5rem; color:var(--text-light); margin-bottom:1.5rem;"></i>
+        <h2 style="font-size:1.8rem; margin-bottom:1rem;">Manuscript Editor</h2>
+        <p style="color:var(--text-secondary); line-height:1.6;">
+            We are building a powerful document editor to help you write and cite seamlessly.
+        </p>
+        <span class="badge-soon">Coming Soon</span>
+    </div>
+</div>
+
+<!-- SCREENING TAB - REORDERED LAYOUT -->
+<div id="view-screening" class="view-section">
+    
+    <!-- 1. MANUAL ADD FORM FIRST -->
+    <div id="owner-screening-controls" class="screening-header" style="display:none;">
+        <div class="controls-left">
+            <div class="manual-add-form">
+                <div class="form-group">
+                    <label class="form-label required">Paper Title</label>
+                    <input type="text" id="paper-add-title" class="sc-input" placeholder="Enter paper title...">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label required">Abstract</label>
+                    <textarea id="paper-add-abstract" class="sc-input" placeholder="Enter or paste abstract..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label required">Source</label>
+                    <select id="paper-add-source" class="sc-input">
+                        <option value="">Select Source...</option>
+                        <option value="PubMed">PubMed</option>
+                        <option value="Scopus">Scopus</option>
+                        <option value="Web of Science">WoS</option>
+                        <option value="Embase">Embase</option>
+                        <option value="Google Scholar">Google Scholar</option>
+                        <option value="Other">Other</option>
+                    </select>
+                    <input type="text" id="paper-add-source-other" class="sc-input hidden" placeholder="Type source name...">
+                </div>
+                
+                <div class="optional-fields">
+                    <span class="optional-fields-toggle" onclick="toggleOptionalFields()">
+                        <i class="fas fa-plus-circle" id="toggle-icon"></i>
+                        <span id="toggle-text">Show Optional Fields</span>
+                    </span>
+                    <div class="optional-fields-content hidden" id="optional-fields-content">
+                        <div class="form-group">
+                            <label class="form-label">DOI / URL</label>
+                            <input type="text" id="paper-add-doi" class="sc-input" placeholder="https://doi.org/... or URL">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Authors</label>
+                            <input type="text" id="paper-add-authors" class="sc-input" placeholder="Author names">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Publication Year</label>
+                            <input type="number" id="paper-add-year" class="sc-input" placeholder="2024" min="1900" max="2100">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Journal</label>
+                            <input type="text" id="paper-add-journal" class="sc-input" placeholder="Journal name">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="controls-row">
+                 <button class="btn-small btn-action" style="flex:1;" onclick="addNewPaper()">
+                     <i class="fas fa-plus"></i> Add Paper
+                 </button>
+                 <input type="file" id="import-file" accept=".ris,.bib,.csv,.txt" style="display:none;" onchange="processImport(event)">
+                 <button class="btn-small" onclick="document.getElementById('import-file').click()">
+                     <i class="fas fa-file-import"></i> Import File
+                 </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="screener-msg" class="screening-header" style="display:none; background:rgba(59, 130, 246, 0.15); color:#2563eb; border-color:rgba(59, 130, 246, 0.3);">
+        <i class="fas fa-info-circle"></i>
+        <span> Vote on papers below.</span>
+    </div>
+    
+    <!-- 2. IMPORT STATS SECOND -->
+    <div class="import-stats-card">
+        <div class="import-stat-item">
+            <div class="import-stat-value" id="total-imported-stat">0</div>
+            <div class="import-stat-label">Total Imported</div>
+        </div>
+        <div class="import-stat-item">
+            <div class="import-stat-value" id="unique-papers-stat">0</div>
+            <div class="import-stat-label">Unique Papers</div>
+        </div>
+    </div>
+
+    <!-- 3. PHASE TABS THIRD -->
+    <div class="screening-phases">
+        <div class="phase-tab active" id="ph-1" onclick="switchScreeningPhase(1)">
+            Phase 1: Title/Abstract
+        </div>
+        <div class="phase-tab" id="ph-2" onclick="switchScreeningPhase(2)">
+            Phase 2: Full Text
+        </div>
+    </div>
+
+    <!-- REDESIGNED UNIFIED TOOLBAR - REMOVED USER FILTER -->
+    <div class="unified-screening-toolbar">
+        <!-- Row 1: Search + Range Filter -->
+        <div class="toolbar-row">
+            <div class="toolbar-search">
+                <i class="fas fa-search"></i>
+                <input type="text" id="paper-search-input" placeholder="Search by paper title or number (e.g., 'diabetes' or '#42')..." oninput="handleSearch()">
+                <span class="toolbar-search-status" id="search-status"></span>
+            </div>
+            
+            <div class="toolbar-range">
+                <div class="toolbar-range-label">
+                    <i class="fas fa-filter"></i>
+                    Paper Range: <strong id="range-min-val">1</strong> - <strong id="range-max-val">1000</strong>
+                </div>
+                <div class="range-slider-container-inline">
+                    <div class="range-slider-track"></div>
+                    <div class="range-slider-range" id="slider-range"></div>
+                    <div class="range-slider">
+                        <input type="range" id="range-min" min="1" max="1000" value="1" oninput="updateRangeSlider()">
+                        <input type="range" id="range-max" min="1" max="1000" value="1000" oninput="updateRangeSlider()">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Row 2: Toggles + Actions (USER FILTER REMOVED) -->
+        <div class="toolbar-row">
+            <div class="toolbar-filter-group">
+                <div class="toolbar-toggle">
+                    <input type="checkbox" id="show-duplicates-toggle" onchange="toggleDuplicates()">
+                    <label for="show-duplicates-toggle">
+                        <i class="fas fa-copy"></i>
+                        Show Duplicates (<span id="duplicate-count">0</span>)
+                    </label>
+                </div>
+
+                <div class="toolbar-toggle" id="mass-select-toggle" style="display:none;">
+                    <input type="checkbox" id="select-all-checkbox" onchange="toggleSelectAll()">
+                    <label for="select-all-checkbox">
+                        Select All (<span id="selection-count">0</span>)
+                    </label>
+                </div>
+            </div>
+
+    <div class="toolbar-actions">
+       <button class="btn-small" id="btn-delete-all" onclick="deleteAllPapers()" 
+               style="background: rgba(248, 113, 113, 0.2); color: var(--danger); 
+               border: 1px solid rgba(248, 113, 113, 0.3); display:none;">
+           <i class="fas fa-trash-alt"></i> Delete All Papers
+       </button>
+       
+       <button class="btn-small" id="btn-delete-selected" onclick="deleteSelectedPapers()" 
+               style="background: rgba(248, 113, 113, 0.2); color: var(--danger); 
+               border: 1px solid rgba(248, 113, 113, 0.3); display:none;" disabled>
+           <i class="fas fa-trash"></i> Delete Selected
+       </button>
+       
+       <button class="btn-small" id="btn-clear-search" onclick="clearSearch()" 
+               style="background: rgba(148, 163, 184, 0.3); color: var(--text-primary); display:none;">
+           <i class="fas fa-times"></i> Clear Search
+       </button>
+   </div>
+        </div>
+    </div>
+    
+    <div class="screening-stats" id="screening-stats-bar"></div>
+    
+    <div id="papers-container" class="paper-grid"></div>
+
+    <div class="pagination-container" id="pagination-container"></div>
+</div>
+</div>
+<!-- Abstract Modal -->
+<div id="abstract-modal" class="modal-overlay">
+    <div class="modal-box">
+        <h3 id="abs-modal-title" style="margin-bottom:1.5rem; font-family:'Poppins',sans-serif; color:var(--text-primary);"></h3>
+        <div id="abs-modal-content" style="max-height:60vh; overflow-y:auto; line-height:1.7; color:var(--text-secondary); margin-bottom:2rem;"></div>
+        <div style="text-align:right;">
+            <button class="btn-small" onclick="closeAbstractModal()">
+                <i class="fas fa-times"></i> Close
+            </button>
+        </div>
+    </div>
+</div>
+<!-- DUPLICATES MODAL - NEW -->
+<div id="duplicates-modal" class="modal-overlay">
+    <div class="duplicates-modal-box">
+        <h2 style="margin-bottom:1.5rem; font-family:'Poppins',sans-serif; color:var(--text-primary);">
+            <i class="fas fa-copy"></i> Duplicate Papers
+        </h2>
+        <p style="color:var(--text-secondary); margin-bottom:1.5rem; line-height:1.6;">
+            The following papers appear to be duplicates based on matching titles or DOIs. The first paper in the list is the "master" copy that can be voted on.
+        </p>
+        <div id="duplicates-list" class="duplicates-list"></div>
+        <div style="text-align:right; margin-top:2rem;">
+            <button class="btn-small" onclick="closeDuplicatesModal()">
+                <i class="fas fa-times"></i> Close
+            </button>
+        </div>
+    </div>
+</div>
+<!-- Import Modal -->
+<div id="import-modal" class="import-modal">
+    <div class="import-modal-box">
+        <h2 style="margin-bottom: 1.5rem; font-family:'Poppins',sans-serif;">
+            <i class="fas fa-file-import"></i> Import Preview
+        </h2>
+        <div id="import-info" style="margin-bottom: 1.2rem;"></div>
+        <div id="import-source-override" style="margin-bottom: 1.2rem;">
+            <label class="form-label">Source (detected or override):</label>
+            <input type="text" id="import-source-input" class="sc-input" placeholder="Auto-detected source...">
+        </div>
+        <div class="import-preview-list" id="import-preview-list"></div>
+        <div id="import-progress" class="hidden">
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="progress-bar">0%</div>
+            </div>
+<p id="progress-text" style="text-align: center; color: var(--text-secondary); font-size: 0.9rem; margin-top: 1rem;"></p>
+        </div>
+        <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem;">
+            <button class="btn-small" style="background: rgba(148, 163, 184, 0.3); color: var(--text-primary);" onclick="closeImportModal()">
+                <i class="fas fa-times"></i> Cancel
+            </button>
+            <button class="btn-small" id="confirm-import-btn" onclick="confirmImport()">
+                <i class="fas fa-check"></i> Import <span id="import-count"></span> Papers
+            </button>
+        </div>
+    </div>
+</div>
+<script>
+const firebaseConfig = {
+apiKey: "AIzaSyCbE13rFgfC6ipnf8-rYR8uAywsseU7Ntg",
+authDomain: "curacode-c6200.firebaseapp.com",
+projectId: "curacode-c6200",
+appId: "1:773218077864:web:217dcc93c6869acb44c69d"
+};
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+let pid=null, pdata=null, uid=null, userEmail=null, isOwner=false, isScreenerAdmin=false, isPaperManager=false, teamMap={}, teamNames={}, currentScreeningPhase=1, allPapersData=[], papersToImport=[], currentFilter='total', detectedSource='';
+    let showDuplicates = false;
+    let currentPage = 1;
+    const papersPerPage = 50;
+    let rangeMin = 1;
+    let rangeMax = 1000;
+    let searchQuery = '';
+    let isSearchActive = false;
+    let duplicateGroups = new Map();
+    let selectedPapers = new Set();
+    let importInProgress = false;
+    
+    const popSound = new Audio("data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU");
+
+    function normalizeTitle(title) {
+        if (!title) return '';
+        return title.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim();
+    }
+
+    function normalizeDOI(doi) {
+        if (!doi) return '';
+        let cleanDOI = doi.toLowerCase().trim();
+        cleanDOI = cleanDOI.replace(/^https?:\/\/(dx\.)?doi\.org\//i, '');
+        cleanDOI = cleanDOI.replace(/^doi:\s*/i, '');
+        return cleanDOI.trim();
+    }
+
+    function detectDuplicates(papers) {
+        const seenTitles = new Map();
+        const seenDOIs = new Map();
+        const duplicates = new Set();
+        duplicateGroups = new Map();
+        
+        papers.forEach((paper, index) => {
+            const normalizedTitle = normalizeTitle(paper.title);
+            const normalizedDOI = normalizeDOI(paper.url);
+            
+            let matchedBy = null;
+            let matchedWith = null;
+            
+            if (normalizedTitle && seenTitles.has(normalizedTitle)) {
+                matchedBy = 'title';
+                matchedWith = seenTitles.get(normalizedTitle);
+                duplicates.add(paper.id);
+                
+                if (!duplicateGroups.has(matchedWith.id)) {
+                    duplicateGroups.set(matchedWith.id, [matchedWith]);
+                }
+                duplicateGroups.get(matchedWith.id).push(paper);
+            } else if (normalizedTitle) {
+                seenTitles.set(normalizedTitle, paper);
+            }
+            
+            if (normalizedDOI && normalizedDOI !== 'null' && normalizedDOI.length > 0) {
+                if (seenDOIs.has(normalizedDOI)) {
+                    matchedBy = 'doi';
+                    matchedWith = seenDOIs.get(normalizedDOI);
+                    duplicates.add(paper.id);
+                    
+                    if (!duplicateGroups.has(matchedWith.id)) {
+                        duplicateGroups.set(matchedWith.id, [matchedWith]);
+                    }
+                    duplicateGroups.get(matchedWith.id).push(paper);
+                } else {
+                    seenDOIs.set(normalizedDOI, paper);
+                }
+            }
+        });
+        
+        return duplicates;
+    }
+
+    function isFirstInDuplicateGroup(paperId) {
+        for (let [firstId, group] of duplicateGroups) {
+            if (group.some(p => p.id === paperId)) {
+                return firstId === paperId;
+            }
+        }
+        return true;
+    }
+
+// NEW FUNCTION: Show import preview modal
+function showImportPreview() {
+    const modal = document.getElementById('import-modal');
+    const infoDiv = document.getElementById('import-info');
+    const sourceInput = document.getElementById('import-source-input');
+    const previewList = document.getElementById('import-preview-list');
+    const countSpan = document.getElementById('import-count');
+    
+    // Set detected source
+    sourceInput.value = detectedSource || 'Imported';
+    
+    // Show paper count
+    infoDiv.innerHTML = `<p style="font-weight:700; color:var(--text-primary); font-size:1.05rem;"><i class="fas fa-file-import"></i> Ready to import ${papersToImport.length} paper${papersToImport.length > 1 ? 's' : ''}</p>`;
+    countSpan.innerText = papersToImport.length;
+    
+    // Show preview of papers
+    previewList.innerHTML = '';
+    papersToImport.slice(0, 10).forEach((paper, idx) => {
+        const div = document.createElement('div');
+        div.className = 'preview-item';
+        div.innerHTML = `<strong>${idx + 1}.</strong> ${paper.title || 'Untitled'}`;
+        previewList.appendChild(div);
+    });
+    
+    if (papersToImport.length > 10) {
+        const more = document.createElement('div');
+        more.className = 'preview-item';
+        more.style.fontStyle = 'italic';
+        more.style.color = 'var(--text-light)';
+        more.innerText = `... and ${papersToImport.length - 10} more papers`;
+        previewList.appendChild(more);
+    }
+    
+    modal.style.display = 'flex';
+}
+
+function closeImportModal() {
+    document.getElementById('import-modal').style.display = 'none';
+    papersToImport = [];
+    document.getElementById('import-progress').classList.add('hidden');
+    document.getElementById('progress-bar').style.width = '0%';
+    document.getElementById('progress-bar').innerText = '0%';
+}
+
+    // NEW FUNCTION: Show duplicates modal
+    function showDuplicatesModal(paperId) {
+        let duplicateGroup = null;
+        
+        // Find the duplicate group for this paper
+        for (let [firstId, group] of duplicateGroups) {
+            if (group.some(p => p.id === paperId)) {
+                duplicateGroup = group;
+                break;
+            }
+        }
+        
+        if (!duplicateGroup || duplicateGroup.length <= 1) {
+            alert("No duplicates found for this paper.");
+            return;
+        }
+        
+        const listContainer = document.getElementById('duplicates-list');
+        listContainer.innerHTML = '';
+        
+        duplicateGroup.forEach((paper, index) => {
+            const isMaster = index === 0;
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'duplicate-item' + (isMaster ? ' is-master' : '');
+            
+            const badgeClass = isMaster ? 'badge-master' : 'badge-duplicate';
+            const badgeText = isMaster ? '✓ Master Copy' : `Duplicate ${index}`;
+            
+            const doiDisplay = paper.url && paper.url !== 'null' ? 
+                `<span><i class="fas fa-link"></i> ${paper.url}</span>` : '';
+            
+            const sourceDisplay = paper.source ? 
+                `<span><i class="fas fa-database"></i> ${paper.source}</span>` : '';
+            
+            const yearDisplay = paper.year ? 
+                `<span><i class="fas fa-calendar"></i> ${paper.year}</span>` : '';
+            
+            itemDiv.innerHTML = `
+                <div class="duplicate-item-header">
+                    <span class="duplicate-item-badge ${badgeClass}">
+                        ${badgeText}
+                    </span>
+                    <span style="font-size:0.75rem; color:var(--text-light); font-weight:600;">
+                        #${paper.globalNumber || 'N/A'}
+                    </span>
+                </div>
+                <div class="duplicate-item-title">${paper.title || 'Untitled'}</div>
+                <div class="duplicate-item-meta">
+                    ${sourceDisplay}
+                    ${doiDisplay}
+                    ${yearDisplay}
+                </div>
+            `;
+            
+            listContainer.appendChild(itemDiv);
+        });
+        
+        document.getElementById('duplicates-modal').style.display = 'flex';
+    }
+
+    function closeDuplicatesModal() {
+        document.getElementById('duplicates-modal').style.display = 'none';
+    }
+
+    // UPDATED: Only scroll to top on pagination changes
+    function scrollToTop() {
+        const screeningView = document.getElementById('view-screening');
+        if (screeningView) {
+            screeningView.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    }
+
+    function handleSearch() {
+        const input = document.getElementById('paper-search-input');
+        const clearBtn = document.getElementById('btn-clear-search');
+        const statusSpan = document.getElementById('search-status');
+        
+        searchQuery = input.value.trim();
+        
+        if (searchQuery) {
+            clearBtn.style.display = 'block';
+            isSearchActive = true;
+            
+            const numberMatch = searchQuery.match(/^#?(\d+)$/);
+            if (numberMatch) {
+                const paperNumber = parseInt(numberMatch[1]);
+                const paper = allPapersData[paperNumber - 1];
+                
+                if (paper) {
+                    statusSpan.innerText = `#${paperNumber}`;
+                    statusSpan.style.color = 'var(--success)';
+                } else {
+                    statusSpan.innerText = `Not found`;
+                    statusSpan.style.color = 'var(--danger)';
+                }
+            } else {
+                statusSpan.innerText = 'Searching...';
+                statusSpan.style.color = 'var(--text-secondary)';
+            }
+        } else {
+            clearBtn.style.display = 'none';
+            isSearchActive = false;
+            statusSpan.innerText = '';
+        }
+        
+        currentPage = 1;
+        renderScreeningView(); // NO scroll here
+    }
+
+    function clearSearch() {
+        document.getElementById('paper-search-input').value = '';
+        document.getElementById('btn-clear-search').style.display = 'none';
+        document.getElementById('search-status').innerText = '';
+        searchQuery = '';
+        isSearchActive = false;
+        currentPage = 1;
+        renderScreeningView(); // NO scroll here
+    }
+
+    function toggleSelectAll() {
+        const checkbox = document.getElementById('select-all-checkbox');
+        const allCheckboxes = document.querySelectorAll('.paper-checkbox');
+        
+        if (checkbox.checked) {
+            allCheckboxes.forEach(cb => {
+                if (!cb.disabled) {
+                    cb.checked = true;
+                    selectedPapers.add(cb.dataset.paperId);
+                    cb.closest('.paper-card').classList.add('selected');
+                }
+            });
+        } else {
+            allCheckboxes.forEach(cb => {
+                cb.checked = false;
+                selectedPapers.delete(cb.dataset.paperId);
+                cb.closest('.paper-card').classList.remove('selected');
+            });
+        }
+        
+        updateSelectionCount();
+    }
+
+    function handlePaperCheckbox(paperId, checkbox) {
+        if (checkbox.checked) {
+            selectedPapers.add(paperId);
+            checkbox.closest('.paper-card').classList.add('selected');
+        } else {
+            selectedPapers.delete(paperId);
+            checkbox.closest('.paper-card').classList.remove('selected');
+            document.getElementById('select-all-checkbox').checked = false;
+        }
+        
+        updateSelectionCount();
+    }
+
+    function updateSelectionCount() {
+        const count = selectedPapers.size;
+        document.getElementById('selection-count').innerText = count.toString();
+        const deleteBtn = document.getElementById('btn-delete-selected');
+        deleteBtn.disabled = count === 0;
+        if (count > 0) {
+            deleteBtn.style.display = 'block';
+        }
+    }
+
+    async function deleteSelectedPapers() {
+        const count = selectedPapers.size;
+        
+        if (count === 0) {
+            alert("No papers selected.");
+            return;
+        }
+        
+        if (!confirm(`Are you sure you want to delete ${count} selected paper${count > 1 ? 's' : ''}? This action cannot be undone.`)) {
+            return;
+        }
+        
+        const deleteBtn = document.getElementById('btn-delete-selected');
+        deleteBtn.disabled = true;
+        deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting...';
+        
+        try {
+            const batch = db.batch();
+            const paperIds = Array.from(selectedPapers);
+            
+            paperIds.forEach(paperId => {
+                const paperRef = db.collection('projects').doc(pid).collection('papers').doc(paperId);
+                batch.delete(paperRef);
+            });
+            
+            await batch.commit();
+            
+            selectedPapers.clear();
+            document.getElementById('select-all-checkbox').checked = false;
+            updateSelectionCount();
+            
+            alert(`Successfully deleted ${count} paper${count > 1 ? 's' : ''}!`);
+            
+        } catch (error) {
+            console.error("Error deleting papers:", error);
+            alert("Error deleting papers: " + error.message);
+        } finally {
+            deleteBtn.disabled = false;
+            deleteBtn.innerHTML = '<i class="fas fa-trash"></i> Delete Selected';
+        }
+    }
+// NEW FUNCTION: Delete all papers
+   async function deleteAllPapers() {
+       const totalPapers = allPapersData.length;
+       
+       if (totalPapers === 0) {
+           alert("There are no papers to delete.");
+           return;
+       }
+       
+       const confirmMessage = `⚠️ WARNING: This will permanently delete ALL ${totalPapers} papers from this project.\n\nThis action cannot be undone.\n\nType "DELETE ALL" to confirm:`;
+       const userInput = prompt(confirmMessage);
+       
+       if (userInput !== "DELETE ALL") {
+           if (userInput !== null) {
+               alert("Deletion cancelled. You must type 'DELETE ALL' exactly to confirm.");
+           }
+           return;
+       }
+       
+       const deleteBtn = document.getElementById('btn-delete-all');
+       deleteBtn.disabled = true;
+       deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting All...';
+       
+       try {
+           // Delete in batches of 500 (Firestore batch limit)
+           const BATCH_SIZE = 500;
+           const totalBatches = Math.ceil(totalPapers / BATCH_SIZE);
+           
+           for (let i = 0; i < totalBatches; i++) {
+               const batch = db.batch();
+               const startIdx = i * BATCH_SIZE;
+               const endIdx = Math.min(startIdx + BATCH_SIZE, totalPapers);
+               
+               for (let j = startIdx; j < endIdx; j++) {
+                   const paperRef = db.collection('projects').doc(pid).collection('papers').doc(allPapersData[j].id);
+                   batch.delete(paperRef);
+               }
+               
+               await batch.commit();
+               console.log(`Deleted batch ${i + 1}/${totalBatches}`);
+           }
+           
+           selectedPapers.clear();
+           document.getElementById('select-all-checkbox').checked = false;
+           updateSelectionCount();
+           
+           alert(`Successfully deleted all ${totalPapers} papers!`);
+           
+       } catch (error) {
+           console.error("Error deleting all papers:", error);
+           alert("Error deleting papers: " + error.message);
+       } finally {
+           deleteBtn.disabled = false;
+           deleteBtn.innerHTML = '<i class="fas fa-trash-alt"></i> Delete All Papers';
+       }
+   }
+    function clearVote(event, paperId) {
+        event.stopPropagation();
+        
+        if(confirm("Are you sure you want to clear your vote for this paper?")) {
+            const voteField = currentScreeningPhase === 2 ? 'votes_p2' : 'votes';
+            const updateData = {};
+            updateData[`${voteField}.${uid}`] = firebase.firestore.FieldValue.delete();
+            updateData[`reasons.${uid}`] = firebase.firestore.FieldValue.delete();
+            updateData[`notes.${uid}`] = firebase.firestore.FieldValue.delete();
+            
+            db.collection('projects').doc(pid).collection('papers').doc(paperId).update(updateData)
+                .then(() => console.log("Vote cleared"))
+                .catch(err => console.error("Error clearing vote:", err));
+        }
+    }
+
+    function setOwnerOverride(event, paperId, decision) {
+        event.stopPropagation();
+        
+        if (!isOwner) {
+            alert("Only the project owner can override conflicts.");
+            return;
+        }
+        
+        const updateData = {
+            ownerOverride: decision,
+            overrideTimestamp: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        
+        if (decision === 'include' && currentScreeningPhase === 1) {
+            updateData['votes.owner_auto'] = 'include';
+        }
+        
+        db.collection('projects').doc(pid).collection('papers').doc(paperId).update(updateData)
+            .then(() => {
+                console.log("Owner override set:", decision);
+                if (decision === 'include' && currentScreeningPhase === 1) {
+                    alert("Paper marked as 'Include' and will appear in Phase 2!");
+                }
+            })
+            .catch(err => console.error("Error setting override:", err));
+    }
+
+    function clearOwnerOverride(event, paperId) {
+        event.stopPropagation();
+        
+        if (!isOwner) {
+            alert("Only the project owner can clear overrides.");
+            return;
+        }
+        
+        const updateData = {
+            ownerOverride: firebase.firestore.FieldValue.delete(),
+            overrideTimestamp: firebase.firestore.FieldValue.delete()
+        };
+        
+        db.collection('projects').doc(pid).collection('papers').doc(paperId).update(updateData)
+            .then(() => console.log("Owner override cleared"))
+            .catch(err => console.error("Error clearing override:", err));
+    }
+
+    auth.onAuthStateChanged(async user => {
+        if (user) {
+            uid = user.uid; 
+            userEmail = user.email;
+            
+            const urlName = new URLSearchParams(window.location.search).get('name');
+            const snap = await db.collection('projects').where('name', '==', decodeURIComponent(urlName)).limit(1).get();
+            
+            if(snap.empty) { 
+                alert('Project not found'); 
+                window.location.href='../dashboard.html'; 
+                return; 
+            }
+            
+            pid = snap.docs[0].id; 
+            pdata = snap.docs[0].data(); 
+            isOwner = (uid === pdata.ownerUID);
+            teamMap[pdata.ownerUID] = pdata.ownerEmail;
+            isScreenerAdmin = pdata.screenerAdmins && pdata.screenerAdmins.includes(userEmail);
+            isPaperManager = pdata.paperManagers && pdata.paperManagers.includes(userEmail);
+            
+            document.getElementById('loading-screen').style.display='none';
+            
+            await loadTeamData();
+            setupProjectUI(); 
+            loadOverview(); 
+            loadScreening();
+            
+            db.collection('projects').doc(pid).onSnapshot(doc => {
+                const d = doc.data(); 
+                pdata = d; 
+                isScreenerAdmin = d.screenerAdmins && d.screenerAdmins.includes(userEmail);
+                isPaperManager = d.paperManagers && d.paperManagers.includes(userEmail);
+                setupProjectUI();
+                renderTeamList();
+            });
+        } else {
+            window.location.href = "../login.html";
+        }
+    });
+
+    async function loadTeamData() {
+        const teamEmails = [pdata.ownerEmail, ...(pdata.sharedWith || [])];
+        
+        const promises = teamEmails.map(async e => {
+            try {
+                const q = await db.collection('users').where('email','==',e).limit(1).get();
+                if(!q.empty) {
+                    const d = q.docs[0].data();
+                    teamNames[e] = d.name || e.split('@')[0];
+                    teamMap[q.docs[0].id] = e;
+                    return;
+                }
+            } catch(err){
+                console.error("Error loading user:", e, err);
+            }
+            teamNames[e] = e.split('@')[0];
+        });
+        await Promise.all(promises); 
+        teamMap[pdata.ownerUID] = pdata.ownerEmail;
+    }
+
+    async function togglePaperManager(email) {
+        if (!isOwner) {
+            alert("Only the project owner can manage permissions.");
+            return;
+        }
+        
+        const paperManagers = pdata.paperManagers || [];
+        
+        if (paperManagers.includes(email)) {
+            await db.collection('projects').doc(pid).update({
+                paperManagers: firebase.firestore.FieldValue.arrayRemove(email)
+            });
+        } else {
+            await db.collection('projects').doc(pid).update({
+                paperManagers: firebase.firestore.FieldValue.arrayUnion(email)
+            });
+        }
+    }
+
+    async function inviteUser() {
+        if (!isOwner) {
+            alert("Only the project owner can invite team members.");
+            return;
+        }
+        
+        const emailInput = document.getElementById('invite-email');
+        const email = emailInput.value.trim().toLowerCase();
+        
+        if (!email) {
+            alert("Please enter an email address.");
+            return;
+        }
+        
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            alert("Please enter a valid email address.");
+            return;
+        }
+        
+        try {
+            const userSnapshot = await db.collection('users').where('email', '==', email).get();
+            
+            if (userSnapshot.empty) { 
+                alert("User not found! Please ensure the email is registered."); 
+                return; 
+            }
+            
+            if (email === pdata.ownerEmail) {
+                alert("This user is the project owner.");
+                emailInput.value = '';
+                return;
+            }
+            
+            if (pdata.sharedWith && pdata.sharedWith.includes(email)) {
+                alert("This user is already a team member.");
+                emailInput.value = '';
+                return;
+            }
+            
+            await db.collection('projects').doc(pid).update({ 
+                sharedWith: firebase.firestore.FieldValue.arrayUnion(email) 
+            });
+            
+            alert(`User ${email} added successfully!`); 
+            emailInput.value = ''; 
+            
+            await loadTeamData();
+            renderTeamList();
+            
+        } catch (error) { 
+            console.error("Error adding user:", error); 
+            alert("An error occurred while adding the user: " + error.message); 
+        }
+    }
+    
+    function renderTeamList() {
+        const tList = document.getElementById('team-list'); 
+        tList.innerHTML = '';
+        
+        const allTeamEmails = [pdata.ownerEmail, ...(pdata.sharedWith || [])];
+        const paperManagers = pdata.paperManagers || [];
+        
+        allTeamEmails.forEach(e => {
+            const memberDiv = document.createElement('div');
+            memberDiv.className = 'team-member';
+            
+            const memberInfo = document.createElement('div');
+            memberInfo.className = 'member-info';
+            
+            const avatar = document.createElement('div');
+            avatar.className = 'avatar';
+            avatar.innerText = e[0].toUpperCase();
+            
+            const nameContainer = document.createElement('div');
+            nameContainer.className = 'member-name';
+            
+            const nameSpan = document.createElement('span');
+            nameSpan.innerText = teamNames[e] || e.split('@')[0];
+            nameContainer.appendChild(nameSpan);
+            
+            if (e === pdata.ownerEmail) {
+                const badge = document.createElement('span');
+                badge.className = 'permission-badge badge-owner';
+                badge.innerText = 'Owner';
+                nameContainer.appendChild(badge);
+            } else if (paperManagers.includes(e)) {
+                const badge = document.createElement('span');
+                badge.className = 'permission-badge badge-manager';
+                badge.innerHTML = '<i class="fas fa-file-alt"></i> Paper Manager';
+                nameContainer.appendChild(badge);
+            }
+            
+            memberInfo.appendChild(avatar);
+            memberInfo.appendChild(nameContainer);
+            memberDiv.appendChild(memberInfo);
+            
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'member-actions';
+            
+            if (isOwner && e !== pdata.ownerEmail) {
+                const toggleBtn = document.createElement('button');
+                toggleBtn.className = 'toggle-manager-btn' + (paperManagers.includes(e) ? ' active' : '');
+                toggleBtn.innerHTML = '<i class="fas fa-file-alt"></i> Paper Manager';
+                toggleBtn.onclick = () => togglePaperManager(e);
+                actionsDiv.appendChild(toggleBtn);
+                
+                const removeBtn = document.createElement('i');
+                removeBtn.className = 'fas fa-trash remove-user-btn';
+                removeBtn.onclick = () => removeUser(e);
+                actionsDiv.appendChild(removeBtn);
+            }
+            
+            memberDiv.appendChild(actionsDiv);
+            tList.appendChild(memberDiv);
+        });
+    }
+    
+    function removeUser(email) { 
+        if(!isOwner) {
+            alert("Only the project owner can remove team members.");
+            return;
+        }
+        
+        if(confirm(`Remove ${email} from the project?`)) {
+            db.collection('projects').doc(pid).update({
+                sharedWith: firebase.firestore.FieldValue.arrayRemove(email),
+                paperManagers: firebase.firestore.FieldValue.arrayRemove(email)
+            }).then(() => {
+                alert("User removed successfully.");
+                loadTeamData();
+                renderTeamList();
+            }).catch(err => {
+                console.error("Error removing user:", err);
+                alert("Error removing user: " + err.message);
+            });
+        }
+    }
+    
+    function updateProgress() { 
+        if(isOwner) {
+            db.collection('projects').doc(pid).update({ 
+                progress: document.getElementById('proj-progress').value 
+            });
+        }
+    }
+    
+    function saveProjectName() { 
+        const n = document.getElementById('display-project-name').value.trim(); 
+        if(isOwner && n) {
+            db.collection('projects').doc(pid).update({name: n});
+        }
+    }
+    
+    function enableTitleEdit() { 
+        if(isOwner) {
+            const input = document.getElementById('display-project-name');
+            input.removeAttribute('readonly');
+            input.focus();
+            input.select();
+        }
+    }
+    
+    function handleTitleKey(e) { 
+        if(e.key==='Enter') {
+            saveProjectName();
+            document.getElementById('display-project-name').setAttribute('readonly', true);
+            document.getElementById('display-project-name').blur();
+        }
+    }
+    
+    function switchTab(viewId) { 
+        document.querySelectorAll('.view-section').forEach(d => d.classList.remove('active')); 
+        document.getElementById('view-'+viewId).classList.add('active'); 
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active')); 
+        event.target.closest('.tab').classList.add('active'); 
+        if(viewId === 'screening') {
+            loadScreening();
+            scrollToTop(); // OK to scroll when switching tabs
+        }
+    }
+
+    function loadOverview() {
+        db.collection('projects').doc(pid).collection('tasks').onSnapshot(snap => {
+            const c = document.getElementById('task-list-container'); 
+            c.innerHTML='';
+            
+            const tasks = []; 
+            snap.forEach(doc => tasks.push({id: doc.id, ...doc.data()}));
+            
+            const allUsers = [pdata.ownerEmail, ...(pdata.sharedWith||[])];
+            const assigneeSelect = document.getElementById('new-task-assignee'); 
+            assigneeSelect.innerHTML = '';
+            
+            if (isOwner) {
+                allUsers.forEach(email => { 
+                    const opt = document.createElement('option'); 
+                    opt.value = email; 
+                    opt.innerText = (teamNames[email] || email.split('@')[0]) + (email === userEmail ? ' (Me)' : '');
+                    assigneeSelect.appendChild(opt); 
+                });
+            } else {
+                const opt = document.createElement('option'); 
+                opt.value = userEmail; 
+                opt.innerText = 'Me';
+                assigneeSelect.appendChild(opt);
+                assigneeSelect.disabled = true;
+                assigneeSelect.style.opacity = '0.7';
+            }
+            
+            if (isOwner) {
+                allUsers.forEach(email => {
+                    const userTasks = tasks.filter(t => t.assignedTo === email);
+                    if(userTasks.length > 0) {
+                        const h = document.createElement('div'); 
+                        h.className = 'task-group-header'; 
+                        h.innerText = (email === userEmail) ? "My Tasks" : (teamNames[email] || email.split('@')[0]) + "'s Tasks";
+                        c.appendChild(h); 
+                        userTasks.forEach(t => renderTask(t, c));
+                    }
+                });
+            } else {
+                const myTasks = tasks.filter(t => t.assignedTo === userEmail);
+                if(myTasks.length > 0) {
+                    const h = document.createElement('div'); 
+                    h.className = 'task-group-header'; 
+                    h.innerText = "My Tasks";
+                    c.appendChild(h); 
+                    myTasks.forEach(t => renderTask(t, c));
+                } else {
+                    c.innerHTML = '<p style="text-align:center; color:var(--text-light); padding:2rem; font-style:italic;">No tasks assigned to you yet.</p>';
+                }
+            }
+            
+            const chatSelect = document.getElementById('chat-recipient'); 
+            chatSelect.innerHTML = '<option value="everyone">Everyone</option>';
+            allUsers.forEach(email => { 
+                if (email !== userEmail) { 
+                    const opt = document.createElement('option'); 
+                    opt.value = email; 
+                    opt.innerText = teamNames[email] || email.split('@')[0]; 
+                    chatSelect.appendChild(opt); 
+                } 
+            });
+        });
+        
+        const win = document.getElementById('chat-window');
+        win.innerHTML = '';
+        
+        db.collection('projects').doc(pid).collection('messages')
+            .orderBy('createdAt', 'asc')
+            .limit(100)
+            .onSnapshot(snap => {
+                snap.docChanges().forEach(change => { 
+                    if (change.type === "added") { 
+                        const m = change.doc.data(); 
+                        if (m.recipient === 'everyone' || m.recipient === userEmail || m.sender === userEmail) {
+                            renderMessage(m, win); 
+                        }
+                    } 
+                });
+                win.scrollTo({ top: win.scrollHeight, behavior: 'smooth' });
+            });
+        
+        renderTeamList();
+    }
+    
+    function renderTask(t, c) { 
+        const div = document.createElement('div'); 
+        div.className = 'task-item'; 
+        
+        let statusClass = 'status-todo'; 
+        if(t.status === 'inprogress') statusClass = 'status-inprogress'; 
+        if(t.status === 'done') statusClass = 'status-done';
+let deleteBtnHTML = ''; 
+    if (isOwner || t.assignedTo === userEmail) {
+        deleteBtnHTML = `<button class="btn-del-task" onclick="deleteTask('${t.id}')" title="Delete Task"><i class="fas fa-trash"></i></button>`;
+    }
+    
+    const canChangeStatus = (t.assignedTo === userEmail);
+    const disabledAttr = canChangeStatus ? '' : 'disabled style="opacity:0.6; cursor:not-allowed;"';
+    
+    div.innerHTML = `
+        <span class="task-text" style="font-weight:600; color:var(--text-primary);">${t.text}</span>
+        <div class="task-actions">
+            <select class="task-status-select ${statusClass}" ${disabledAttr} onchange="updateTaskStatus(this, '${t.id}')">
+                <option value="todo" ${t.status === 'todo' ? 'selected' : ''}>To Do</option>
+                <option value="inprogress" ${t.status === 'inprogress' ? 'selected' : ''}>Doing</option>
+                <option value="done" ${t.status === 'done' ? 'selected' : ''}>Done</option>
+            </select>
+            ${deleteBtnHTML}
+        </div>
+    `; 
+    
+    c.appendChild(div); 
+}
+
+function updateTaskStatus(selectEl, docId) { 
+    selectEl.classList.remove('status-todo', 'status-inprogress', 'status-done'); 
+    if(selectEl.value === 'todo') selectEl.classList.add('status-todo'); 
+    if(selectEl.value === 'inprogress') selectEl.classList.add('status-inprogress'); 
+    if(selectEl.value === 'done') selectEl.classList.add('status-done'); 
+    db.collection('projects').doc(pid).collection('tasks').doc(docId).update({ status: selectEl.value }); 
+}
+
+function addTask() { 
+    const txt = document.getElementById('new-task-text').value.trim(); 
+    let assignedEmail;
+    
+    if (isOwner) {
+        assignedEmail = document.getElementById('new-task-assignee').value;
+    } else {
+        assignedEmail = userEmail;
+    }
+    
+    if(!txt) {
+        alert("Please enter a task description.");
+        return;
+    }
+    
+    if(!assignedEmail) {
+        alert("Please select who to assign this task to.");
+        return;
+    }
+    
+    db.collection('projects').doc(pid).collection('tasks').add({ 
+        text: txt, 
+        assignedTo: assignedEmail, 
+        status: 'todo', 
+        createdBy: userEmail, 
+        createdAt: firebase.firestore.FieldValue.serverTimestamp() 
+    }).then(() => {
+        document.getElementById('new-task-text').value = ''; 
+    }).catch(err => {
+        console.error("Error adding task:", err);
+        alert("Error adding task: " + err.message);
+    });
+}
+
+function deleteTask(taskId) { 
+    if(confirm("Are you sure you want to delete this task?")) {
+        db.collection('projects').doc(pid).collection('tasks').doc(taskId).delete()
+            .then(() => console.log("Task deleted"))
+            .catch(err => {
+                console.error("Error deleting task:", err);
+                alert("Error deleting task: " + err.message);
+            });
+    }
+}
+
+function sendChat() { 
+    const txt = document.getElementById('chat-msg-in').value.trim(); 
+    const recipient = document.getElementById('chat-recipient').value; 
+    
+    if(!txt) {
+        return;
+    }
+    
+    popSound.play().catch(e => console.log("Audio play failed")); 
+    
+    db.collection('projects').doc(pid).collection('messages').add({ 
+        text: txt, 
+        sender: userEmail, 
+        recipient: recipient, 
+        createdAt: firebase.firestore.FieldValue.serverTimestamp() 
+    }).then(() => { 
+        document.getElementById('chat-msg-in').value = ''; 
+    }).catch(error => { 
+        console.error("Error sending message:", error);
+        alert("Error sending message: " + error.message); 
+    }); 
+}
+
+function renderMessage(m, container) { 
+    const isMe = m.sender === userEmail; 
+    const isPrivate = m.recipient && m.recipient !== 'everyone'; 
+    const rowClass = isMe ? 'sent' : 'received'; 
+    const privateClass = isPrivate ? 'private' : ''; 
+    const privateLabel = isPrivate ? `<span class="private-tag" style="font-weight:700; font-size:0.65rem; opacity:0.9;">PRIVATE ${isMe ? 'TO ' + (teamNames[m.recipient] || m.recipient.split('@')[0]) : ''}</span>` : ''; 
+    const senderName = teamNames[m.sender] || m.sender.split('@')[0]; 
+    
+    const div = document.createElement('div'); 
+    div.className = `chat-row ${rowClass} ${privateClass}`; 
+    div.innerHTML = `
+        <div class="chat-bubble">
+            ${privateLabel}${m.text}
+            <div class="chat-meta">${isMe ? 'You' : senderName}</div>
+        </div>
+    `; 
+    
+    container.appendChild(div); 
+}
+
+// CORRECTED setupProjectUI() FUNCTION
+// Replace your existing setupProjectUI() function with this:
+
+function setupProjectUI() { 
+    document.getElementById('display-project-name').value = pdata.name; 
+    document.getElementById('loading-screen').style.display='none'; 
+    
+    if(pdata.progress) {
+        document.getElementById('proj-progress').value = pdata.progress; 
+    }
+    
+    // FIXED: Define canAddPapers BEFORE using it
+    const canAddPapers = isOwner || isScreenerAdmin || isPaperManager;
+    document.getElementById('owner-screening-controls').style.display = canAddPapers ? 'flex' : 'none'; 
+    document.getElementById('screener-msg').style.display = canAddPapers ? 'none' : 'flex'; 
+    
+    // Now use canAddPapers for button visibility
+    const massSelectToggle = document.getElementById('mass-select-toggle');
+    const deleteBtn = document.getElementById('btn-delete-selected');
+    const deleteAllBtn = document.getElementById('btn-delete-all');
+    
+    if (canAddPapers) {
+        massSelectToggle.style.display = 'flex';
+        deleteAllBtn.style.display = 'block';
+        deleteBtn.style.display = 'none';
+    } else {
+        massSelectToggle.style.display = 'none';
+        deleteAllBtn.style.display = 'none';
+        deleteBtn.style.display = 'none';
+    }
+    
+    if(isOwner) { 
+        document.getElementById('edit-title-btn').style.display = 'block'; 
+        document.getElementById('invite-box').style.display = 'flex'; 
+        document.getElementById('team-permission-msg').style.display = 'none';
+    } else { 
+        document.getElementById('team-permission-msg').style.display = 'block'; 
+        document.getElementById('invite-box').style.display = 'none'; 
+        document.getElementById('edit-title-btn').style.display = 'none';
+    }
+    
+    document.getElementById('paper-add-source').addEventListener('change', function() {
+        if(this.value === 'Other') {
+            document.getElementById('paper-add-source-other').classList.remove('hidden');
+        } else {
+            document.getElementById('paper-add-source-other').classList.add('hidden');
+        }
+    });
+}
+function toggleOptionalFields() {
+    const content = document.getElementById('optional-fields-content');
+    const icon = document.getElementById('toggle-icon');
+    const text = document.getElementById('toggle-text');
+    
+    if(content.classList.contains('hidden')) {
+        content.classList.remove('hidden');
+        icon.className = 'fas fa-minus-circle';
+        text.innerText = 'Hide Optional Fields';
+    } else {
+        content.classList.add('hidden');
+        icon.className = 'fas fa-plus-circle';
+        text.innerText = 'Show Optional Fields';
+    }
+}
+
+function toggleDuplicates() {
+    showDuplicates = document.getElementById('show-duplicates-toggle').checked;
+    currentPage = 1;
+    renderScreeningView(); // NO scroll here
+}
+function updateRangeSlider() {
+const minSlider = document.getElementById('range-min');
+const maxSlider = document.getElementById('range-max');
+let minVal = parseInt(minSlider.value);
+let maxVal = parseInt(maxSlider.value);
+
+if (minVal > maxVal - 1) {
+    minVal = maxVal - 1;
+    minSlider.value = minVal;
+}
+
+if (maxVal < minVal + 1) {
+    maxVal = minVal + 1;
+    maxSlider.value = maxVal;
+}
+
+rangeMin = minVal;
+rangeMax = maxVal;
+
+document.getElementById('range-min-val').innerText = minVal;
+document.getElementById('range-max-val').innerText = maxVal;
+
+const totalRange = parseInt(maxSlider.max) - parseInt(minSlider.min);
+const minPercent = ((minVal - parseInt(minSlider.min)) / totalRange) * 100;
+const maxPercent = ((maxVal - parseInt(minSlider.min)) / totalRange) * 100;
+
+const rangeBar = document.getElementById('slider-range');
+rangeBar.style.left = minPercent + '%';
+rangeBar.style.width = (maxPercent - minPercent) + '%';
+
+// REMOVED: currentPage = 1;
+// REMOVED: renderScreeningView();
+}
+function loadScreening() {
+let isFirstLoad = true;
+db.collection('projects').doc(pid).collection('papers').onSnapshot(snap => {
+    allPapersData = []; 
+    snap.forEach(doc => { 
+        allPapersData.push({ id: doc.id, ...doc.data() }); 
+    });
+    
+    const totalPapers = allPapersData.length;
+    document.getElementById('range-min').max = totalPapers || 1000;
+    document.getElementById('range-max').max = totalPapers || 1000;
+    
+    // Only reset range-max value on first load
+    if (isFirstLoad) {
+        document.getElementById('range-max').value = totalPapers || 1000;
+        rangeMax = totalPapers || 1000;
+        document.getElementById('range-max-val').innerText = rangeMax;
+    }
+    
+    updateRangeSlider();
+    renderScreeningView();
+    
+    if (isFirstLoad) {
+        isFirstLoad = false;
+    }
+});
+}
+function switchScreeningPhase(p) { 
+    currentScreeningPhase = p; 
+    currentFilter = 'total';
+    currentPage = 1;
+    selectedPapers.clear();
+    document.getElementById('select-all-checkbox').checked = false;
+    updateSelectionCount();
+    document.getElementById('ph-1').classList.toggle('active', p===1); 
+    document.getElementById('ph-2').classList.toggle('active', p===2); 
+    renderScreeningView(); // NO scroll here
+    scrollToTop(); // OK to scroll when switching phases
+}
+
+// UPDATED: No longer scrolls to top
+function filterScreening(t) { 
+    currentFilter = t; 
+    currentPage = 1;
+    renderScreeningView(); // NO scroll here
+}
+
+function determinePhaseResult(p, phase) {
+    if (p.ownerOverride) {
+        return p.ownerOverride;
+    }
+    
+    const votesMap = (phase === 2) ? (p.votes_p2 || {}) : (p.votes || {});
+    const votes = Object.values(votesMap).filter(v => v);
+    const unique = [...new Set(votes)];
+    
+    if(votes.length === 0) return 'unscreened';
+    if(unique.length === 1 && unique[0] === 'include') return 'include';
+    if(unique.length === 1 && unique[0] === 'exclude') return 'exclude';
+    if(unique.length > 1) return 'conflict';
+    return 'unscreened';
+}
+
+function determinePaperStatus(p) {
+    if (p.ownerOverride) {
+        return { status: p.ownerOverride, isOverridden: true };
+    }
+    
+    const votesMap = (currentScreeningPhase === 2) ? (p.votes_p2 || {}) : (p.votes || {});
+    let target = uid; // REMOVED user filter, always show current user's vote
+    
+    const v = votesMap[target]; 
+    return { status: v || 'unscreened', isOverridden: false };
+}
+
+// UPDATED: Duplicates now appear in duplicate filter even if toggle is OFF
+function renderScreeningView() {
+    const c = document.getElementById('papers-container'); 
+    c.innerHTML = ''; 
+    
+    const duplicateIds = detectDuplicates(allPapersData);
+    
+    const totalImported = allPapersData.length;
+    const uniquePapers = totalImported - duplicateIds.size;
+    document.getElementById('total-imported-stat').innerText = totalImported;
+    document.getElementById('unique-papers-stat').innerText = uniquePapers;
+    
+    let count = { total:0, inc:0, exc:0, conflict:0, un:0, dup:0 };
+    let allFilteredPapers = [];
+    
+    allPapersData.forEach((p, globalIndex) => {
+        let resP1 = determinePhaseResult(p, 1);
+        if(currentScreeningPhase === 2 && resP1 !== 'include') return;
+        
+        const isDup = duplicateIds.has(p.id);
+        const isFirstDup = isFirstInDuplicateGroup(p.id);
+        
+        if(isDup && !isFirstDup) count.dup++;
+        
+        if(currentScreeningPhase === 2 && isDup) return;
+        
+        const st = determinePaperStatus(p);
+        
+        const canBeVotedOn = !(isDup && !isFirstDup);
+        
+        if(canBeVotedOn) {
+            count.total++;
+            if(st.status === 'include') count.inc++; 
+            else if(st.status === 'exclude') count.exc++; 
+            else if(st.status === 'conflict') count.conflict++; 
+            else count.un++;
+        }
+        
+        let show = false;
+        
+        // UPDATED: Duplicates appear in duplicate filter even if toggle is OFF
+        if(currentFilter === 'duplicate' && isDup && !isFirstDup) {
+            show = true; // Always show duplicates when duplicate filter is active
+        } else if(currentScreeningPhase === 1 && isDup && !showDuplicates && !isFirstDup) {
+            show = false;
+        } else { 
+            if(currentFilter === 'total') show = true; 
+            else if(currentFilter === 'include' && st.status === 'include') show = true; 
+            else if(currentFilter === 'exclude' && st.status === 'exclude') show = true; 
+            else if(currentFilter === 'conflict' && st.status === 'conflict') show = true; 
+            else if(currentFilter === 'unscreened' && st.status === 'unscreened') show = true;
+        }
+        
+        if(show) {
+            allFilteredPapers.push({
+                ...p,
+                isDuplicate: isDup && !isFirstDup,
+                isFirstDuplicate: isFirstDup,
+                globalNumber: globalIndex + 1,
+                status: st
+            });
+        }
+    });
+    
+    document.getElementById('duplicate-count').innerText = count.dup;
+    
+    const rangeFilteredPapers = allFilteredPapers.filter(p => {
+        return p.globalNumber >= rangeMin && p.globalNumber <= rangeMax;
+    });
+    
+    let searchFilteredPapers = rangeFilteredPapers;
+    
+    if (isSearchActive && searchQuery) {
+        const numberMatch = searchQuery.match(/^#?(\d+)$/);
+        
+        if (numberMatch) {
+            const paperNumber = parseInt(numberMatch[1]);
+            searchFilteredPapers = rangeFilteredPapers.filter(p => p.globalNumber === paperNumber);
+        } else {
+            const lowerQuery = searchQuery.toLowerCase();
+            searchFilteredPapers = rangeFilteredPapers.filter(p => {
+                return p.title && p.title.toLowerCase().includes(lowerQuery);
+            });
+        }
+        
+        const statusSpan = document.getElementById('search-status');
+        if (searchFilteredPapers.length > 0) {
+            statusSpan.innerText = `${searchFilteredPapers.length} result${searchFilteredPapers.length > 1 ? 's' : ''}`;
+            statusSpan.style.color = 'var(--success)';
+        } else {
+            statusSpan.innerText = 'No results';
+            statusSpan.style.color = 'var(--danger)';
+        }
+    }
+    
+    const totalPages = Math.ceil(searchFilteredPapers.length / papersPerPage);
+    const startIdx = (currentPage - 1) * papersPerPage;
+    const endIdx = startIdx + papersPerPage;
+    const papersToShow = searchFilteredPapers.slice(startIdx, endIdx);
+    
+    if(papersToShow.length === 0) {
+        const emptyMsg = isSearchActive ? 
+            '<p style="text-align:center; color:var(--text-light); padding:3rem; font-size:1.1rem; font-style:italic;">No papers match your search. <a href="#" onclick="clearSearch(); return false;" style="color:var(--primary); font-weight:600;">Clear search</a></p>' :
+            '<p style="text-align:center; color:var(--text-light); padding:3rem; font-size:1.1rem; font-style:italic;">No papers to display.</p>';
+        c.innerHTML = emptyMsg;
+    } else {
+        const canAddPapers = isOwner || isScreenerAdmin || isPaperManager;
+        
+        papersToShow.forEach(p => {
+            const votes = (currentScreeningPhase === 2) ? (p.votes_p2 || {}) : (p.votes || {});
+            const myVote = votes[uid];
+            
+            const del = canAddPapers ? `<button class="btn-del-paper" onclick="deletePaper(event,'${p.id}')"><i class="fas fa-trash"></i></button>` : '';
+            
+            const isVotingDisabled = p.isDuplicate;
+            const voteDisabledAttr = isVotingDisabled ? 'disabled' : '';
+            
+            let cardExtraClass = p.isDuplicate ? ' duplicate-disabled' : '';
+            if (selectedPapers.has(p.id)) {
+                cardExtraClass += ' selected';
+            }
+            
+            let duplicateBadge = '';
+            let viewDuplicatesBtn = '';
+            if (p.isDuplicate) {
+                duplicateBadge = '<span class="duplicate-badge"><i class="fas fa-ban"></i> DUPLICATE</span>';
+                viewDuplicatesBtn = `<button class="btn-view-duplicates" onclick="event.stopPropagation(); showDuplicatesModal('${p.id}')"><i class="fas fa-eye"></i> View Duplicates</button>`;
+            }
+            
+            let overrideBadge = '';
+            let overrideControls = '';
+            const isConflict = p.status.status === 'conflict' && !p.status.isOverridden;
+            const hasOverride = p.ownerOverride;
+            
+            if (hasOverride) {
+                const overrideIcon = p.ownerOverride === 'include' ? '✓' : '✗';
+                const overrideText = p.ownerOverride === 'include' ? 'FORCED INCLUDE' : 'FORCED EXCLUDE';
+                overrideBadge = `<span class="conflict-override-badge"><i class="fas fa-crown"></i> ${overrideIcon} ${overrideText}</span>`;
+            }
+            
+            if (isOwner && (isConflict || hasOverride)) {
+                overrideControls = `
+                    <div class="owner-override-controls" onclick="event.stopPropagation()">
+                        <div class="override-label">
+                            <i class="fas fa-crown"></i>
+                            Owner Override: Resolve Conflict
+                        </div>
+                        <div class="owner-override-btns">
+                            <button class="btn-override btn-override-include" onclick="setOwnerOverride(event, '${p.id}', 'include')">
+                                <i class="fas fa-check"></i> Force Include
+                            </button>
+                            <button class="btn-override btn-override-exclude" onclick="setOwnerOverride(event, '${p.id}', 'exclude')">
+                                <i class="fas fa-times"></i> Force Exclude
+                            </button>
+                            ${hasOverride ? `<button class="btn-override btn-override-clear" onclick="clearOwnerOverride(event, '${p.id}')">
+                                <i class="fas fa-eraser"></i> Clear Override
+                            </button>` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            let checkboxHTML = '';
+            if (canAddPapers) {
+                const isChecked = selectedPapers.has(p.id) ? 'checked' : '';
+                checkboxHTML = `<input type="checkbox" class="paper-checkbox" data-paper-id="${p.id}" ${isChecked} onchange="handlePaperCheckbox('${p.id}', this)" onclick="event.stopPropagation();">`;
+            }
+            
+            let conflictUI = '';
+            if(isOwner || isScreenerAdmin) {
+                let i=0, e=0, m=0, tot=0;
+                Object.values(votes).forEach(v => { 
+                    if(v==='include') i++; 
+                    else if(v==='exclude') e++; 
+                    else if(v==='maybe') m++; 
+                    tot++; 
+                });
+                if(tot > 0) {
+                    conflictUI = `<div class="consensus-container" style="display:block; margin-top:0.8rem;">
+                        <div class="consensus-bar" style="display:flex; height:8px; background:rgba(226, 232, 240, 0.5); border-radius:6px; overflow:hidden;">
+                            <div class="c-seg c-green" style="width:${(i/tot)*100}%; background:var(--success);"></div>
+                            <div class="c-seg c-yellow" style="width:${(m/tot)*100}%; background:var(--warning);"></div>
+                            <div class="c-seg c-red" style="width:${(e/tot)*100}%; background:var(--danger);"></div>
+                        </div>
+                        <div class="consensus-label" style="margin-top:0.4rem; font-size:0.7rem; color:var(--text-secondary); font-weight:600;">${i} Include, ${m} Maybe, ${e} Exclude</div>
+                    </div>`;
+                }
+            }
+            
+            const myNote = p.notes && p.notes[uid] ? p.notes[uid] : "";
+            const myReason = p.reasons && p.reasons[uid] ? p.reasons[uid] : "";
+            const isCustom = (myReason && !['relevant','background','duplicate','wrong_population','wrong_intervention','wrong_outcome','wrong_study_design','not_english','no_full_text'].includes(myReason));
+            
+            const reasonSelect = `<select class="reason-select" onchange="handleReasonChange('${p.id}', this.value)" onclick="event.stopPropagation();" ${voteDisabledAttr}>
+                <option value="">Select Reason...</option>
+                <option value="relevant" ${myReason==='relevant'?'selected':''}>✓ Relevant / Meets Criteria</option>
+                <option value="background" ${myReason==='background'?'selected':''}>📚 Background Info</option>
+                <option disabled>──────────</option>
+                <option value="duplicate" ${myReason==='duplicate'?'selected':''}>⚠️ Duplicate</option>
+                <option value="wrong_population" ${myReason==='wrong_population'?'selected':''}>❌ Wrong Population</option>
+                <option value="wrong_intervention" ${myReason==='wrong_intervention'?'selected':''}>❌ Wrong Intervention</option>
+                <option value="wrong_outcome" ${myReason==='wrong_outcome'?'selected':''}>❌ Wrong Outcome</option>
+                <option value="wrong_study_design" ${myReason==='wrong_study_design'?'selected':''}>❌ Wrong Study Design</option>
+                <option value="not_english" ${myReason==='not_english'?'selected':''}>🌐 Not English</option>
+                <option value="no_full_text" ${myReason==='no_full_text'?'selected':''}>📄 Full Text Not Available</option>
+                <option value="Other" ${isCustom?'selected':''}>✏️ Other (Write below)...</option>
+            </select>
+            <input id="reason-other-${p.id}" class="sc-input ${isCustom?'':'hidden'}" placeholder="Type reason..." value="${isCustom?myReason:''}" onblur="savePaperReason('${p.id}', this.value)" onclick="event.stopPropagation();" ${voteDisabledAttr}>`;
+
+            let fullTextLinkHTML = ''; 
+            if(currentScreeningPhase === 2) { 
+                const hasUrl = p.url && p.url !== "null"; 
+                const linkUrl = hasUrl ? p.url : `https://scholar.google.com/scholar?q=${encodeURIComponent(p.title)}`; 
+                const linkText = hasUrl ? "Open DOI" : "Google Scholar"; 
+                const linkIcon = hasUrl ? "fas fa-external-link-alt" : "fas fa-search"; 
+                fullTextLinkHTML = `<a href="${linkUrl}" target="_blank" style="display:inline-flex; align-items:center; gap:0.5rem; font-size:0.8rem; font-weight:600; color:var(--primary); text-decoration:none; margin-bottom:0.6rem; transition: all 0.3s ease;" onmouseover="this.style.color='var(--primary-dark)'" onmouseout="this.style.color='var(--primary)'" onclick="event.stopPropagation();"><i class="${linkIcon}"></i> ${linkText}</a>`; 
+            }
+
+            const doiDisplay = p.url && p.url !== "null" ? `<div style="font-size:0.75rem; color:var(--text-light); margin-top:0.4rem;"><i class="fas fa-link"></i> ${p.url}</div>` : '';
+
+            const card = document.createElement('div');
+            card.className = 'paper-card' + cardExtraClass;
+            card.onclick = () => openAbstractModal(p.id);
+            card.innerHTML = `
+                ${checkboxHTML}
+                <span class="card-number">#${p.globalNumber}</span>
+                ${duplicateBadge}
+                ${viewDuplicatesBtn}
+                ${overrideBadge}
+                ${del}
+                <div class="paper-title">${p.title || 'Untitled'}</div>
+                <div class="paper-source">${p.source || 'Unknown Source'}</div>
+                ${doiDisplay}
+                ${fullTextLinkHTML}${conflictUI}${overrideControls}
+                <div class="vote-actions" onclick="event.stopPropagation()">
+                    <button class="btn-vote vote-include ${myVote==='include'?'selected':''}" onclick="votePaper('${p.id}','include')" ${voteDisabledAttr}>
+                        <i class="fas fa-check"></i>
+                        <span style="font-size:0.75rem;">Include</span>
+                    </button>
+                    <button class="btn-vote vote-maybe ${myVote==='maybe'?'selected':''}" onclick="votePaper('${p.id}','maybe')" ${voteDisabledAttr}>
+                        <i class="fas fa-question"></i>
+                        <span style="font-size:0.75rem;">Maybe</span>
+                    </button>
+                    <button class="btn-vote vote-exclude ${myVote==='exclude'?'selected':''}" onclick="votePaper('${p.id}','exclude')" ${voteDisabledAttr}>
+                        <i class="fas fa-times"></i>
+                        <span style="font-size:0.75rem;">Exclude</span>
+                    </button>
+                </div>
+                <button class="btn-clear-vote" onclick="clearVote(event, '${p.id}')" ${myVote ? '' : 'disabled'} ${voteDisabledAttr}>
+                    <i class="fas fa-eraser"></i> Clear My Vote
+                </button>
+                <div style="margin-top:0.8rem;" onclick="event.stopPropagation();">${reasonSelect}</div>
+                <textarea class="note-input" placeholder="Add your notes..." onblur="savePaperNote('${p.id}', this.value)" onclick="event.stopPropagation();" ${voteDisabledAttr}>${myNote}</textarea>
+            `;
+            c.appendChild(card);
+        });
+    }
+    
+    renderPagination(totalPages, searchFilteredPapers.length);
+    
+    const bar = document.getElementById('screening-stats-bar'); 
+    let conflictHTML = ((isOwner || isScreenerAdmin)) ? `<div class="stat-card ${currentFilter==='conflict'?'active':''}" onclick="filterScreening('conflict')"><span class="stat-val" style="color:var(--warning);">${count.conflict}</span><span class="stat-label">Conflict</span></div>` : '';
+    let dupHTML = (currentScreeningPhase === 1) ? `<div class="stat-card ${currentFilter==='duplicate'?'active':''}" onclick="filterScreening('duplicate')"><span class="stat-val" style="color:var(--danger);">${count.dup}</span><span class="stat-label">Duplicates</span></div>` : '';
+    bar.innerHTML = `
+        <div class="stat-card ${currentFilter==='total'?'active':''}" onclick="filterScreening('total')">
+            <span class="stat-val">${count.total}</span>
+            <span class="stat-label">Total</span>
+        </div>
+        <div class="stat-card ${currentFilter==='include'?'active':''}" onclick="filterScreening('include')">
+            <span class="stat-val" style="color:var(--success);">${count.inc}</span>
+            <span class="stat-label">Include</span>
+        </div>
+        <div class="stat-card ${currentFilter==='exclude'?'active':''}" onclick="filterScreening('exclude')">
+            <span class="stat-val" style="color:var(--danger);">${count.exc}</span>
+            <span class="stat-label">Exclude</span>
+        </div>
+        ${conflictHTML}
+        <div class="stat-card ${currentFilter==='unscreened'?'active':''}" onclick="filterScreening('unscreened')">
+            <span class="stat-val" style="color:var(--text-light);">${count.un}</span>
+            <span class="stat-label">Pending</span>
+        </div>
+        ${dupHTML}
+    `;
+}
+
+// UPDATED: Only scroll to top when pagination changes
+function renderPagination(totalPages, totalPapers) {
+    const container = document.getElementById('pagination-container');
+    
+    if(totalPages <= 1) {
+        container.style.display = 'none';
+        return;
+    }
+    
+    container.style.display = 'flex';
+    container.innerHTML = '';
+    
+    const prevBtn = document.createElement('button');
+    prevBtn.className = 'pagination-btn';
+    prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i> Previous';
+    prevBtn.disabled = currentPage === 1;
+    prevBtn.onclick = () => {
+        if(currentPage > 1) {
+            currentPage--;
+            renderScreeningView();
+            scrollToTop(); // SCROLL on pagination change
+        }
+    };
+    container.appendChild(prevBtn);
+    
+    const maxPagesToShow = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+    let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+    
+    if(endPage - startPage + 1 < maxPagesToShow) {
+        startPage = Math.max(1, endPage - maxPagesToShow + 1);
+    }
+    
+    if(startPage > 1) {
+        const firstPage = document.createElement('div');
+        firstPage.className = 'pagination-page';
+        firstPage.innerText = '1';
+        firstPage.onclick = () => {
+            currentPage = 1;
+            renderScreeningView();
+            scrollToTop(); // SCROLL on pagination change
+        };
+        container.appendChild(firstPage);
+        
+        if(startPage > 2) {
+            const dots = document.createElement('div');
+            dots.className = 'pagination-page';
+            dots.innerText = '...';
+            dots.style.cursor = 'default';
+            dots.onclick = null;
+            container.appendChild(dots);
+        }
+    }
+    
+    for(let i = startPage; i <= endPage; i++) {
+        const pageBtn = document.createElement('div');
+        pageBtn.className = 'pagination-page' + (i === currentPage ? ' active' : '');
+        pageBtn.innerText = i;
+        pageBtn.onclick = () => {
+            currentPage = i;
+            renderScreeningView();
+            scrollToTop(); // SCROLL on pagination change
+        };
+        container.appendChild(pageBtn);
+    }
+    
+    if(endPage < totalPages) {
+        if(endPage < totalPages - 1) {
+            const dots = document.createElement('div');
+            dots.className = 'pagination-page';
+            dots.innerText = '...';
+            dots.style.cursor = 'default';
+            dots.onclick = null;
+            container.appendChild(dots);
+        }
+        
+        const lastPage = document.createElement('div');
+        lastPage.className = 'pagination-page';
+        lastPage.innerText = totalPages;
+        lastPage.onclick = () => {
+            currentPage = totalPages;
+            renderScreeningView();
+            scrollToTop(); // SCROLL on pagination change
+        };
+        container.appendChild(lastPage);
+    }
+    
+    const nextBtn = document.createElement('button');
+    nextBtn.className = 'pagination-btn';
+    nextBtn.innerHTML = 'Next <i class="fas fa-chevron-right"></i>';
+    nextBtn.disabled = currentPage === totalPages;
+    nextBtn.onclick = () => {
+        if(currentPage < totalPages) {
+            currentPage++;
+            renderScreeningView();
+            scrollToTop(); // SCROLL on pagination change
+        }
+    };
+    container.appendChild(nextBtn);
+    
+    const info = document.createElement('div');
+    info.className = 'pagination-info';
+    const startNum = (currentPage - 1) * papersPerPage + 1;
+    const endNum = Math.min(currentPage * papersPerPage, totalPapers);
+    info.innerText = `Showing ${startNum}-${endNum} of ${totalPapers}`;
+    container.appendChild(info);
+}
+
+function openAbstractModal(id) {
+    const p = allPapersData.find(x => x.id === id);
+    if(p) {
+        document.getElementById('abs-modal-title').innerText = p.title || 'Untitled';
+        document.getElementById('abs-modal-content').innerText = p.abstract || 'No abstract available.';
+        document.getElementById('abstract-modal').style.display = 'flex';
+    }
+}
+
+function closeAbstractModal() { 
+    document.getElementById('abstract-modal').style.display = 'none'; 
+}
+
+function votePaper(paperId, vote) {
+    const voteField = currentScreeningPhase === 2 ? 'votes_p2' : 'votes';
+    const updateData = {};
+    updateData[`${voteField}.${uid}`] = vote;
+    
+    db.collection('projects').doc(pid).collection('papers').doc(paperId).update(updateData)
+        .then(() => console.log("Vote saved:", vote))
+        .catch(err => console.error("Error voting:", err));
+}
+
+function savePaperNote(paperId, note) {
+    const updateData = {};
+    updateData[`notes.${uid}`] = note.trim();
+    
+    db.collection('projects').doc(pid).collection('papers').doc(paperId).update(updateData)
+        .then(() => console.log("Note saved"))
+        .catch(err => console.error("Error saving note:", err));
+}
+
+function handleReasonChange(paperId, value) {
+    if(value === 'Other') {
+        document.getElementById(`reason-other-${paperId}`).classList.remove('hidden');
+        document.getElementById(`reason-other-${paperId}`).focus();
+    } else {
+        document.getElementById(`reason-other-${paperId}`).classList.add('hidden');
+        savePaperReason(paperId, value);
+    }
+}
+
+function savePaperReason(paperId, reason) {
+    const updateData = {};
+    updateData[`reasons.${uid}`] = reason.trim();
+    
+    db.collection('projects').doc(pid).collection('papers').doc(paperId).update(updateData)
+        .then(() => console.log("Reason saved"))
+        .catch(err => console.error("Error saving reason:", err));
+}
+
+function addNewPaper() {
+    const canAddPapers = isOwner || isScreenerAdmin || isPaperManager;
+    
+    if(!canAddPapers) {
+        alert("You don't have permission to add papers. Contact the project owner.");
+        return;
+    }
+    
+    const title = document.getElementById('paper-add-title').value.trim();
+    const abstract = document.getElementById('paper-add-abstract').value.trim();
+    let source = document.getElementById('paper-add-source').value;
+    
+    if(source === 'Other') {
+        source = document.getElementById('paper-add-source-other').value.trim();
+    }
+    
+    if(!title) {
+        alert("Please enter a paper title.");
+        return;
+    }
+    
+    if(!abstract) {
+        alert("Please enter an abstract.");
+        return;
+    }
+    
+    if(!source) {
+        alert("Please select or enter a source.");
+        return;
+    }
+    
+    const doi = document.getElementById('paper-add-doi').value.trim();
+    const authors = document.getElementById('paper-add-authors').value.trim();
+    const year = document.getElementById('paper-add-year').value.trim();
+    const journal = document.getElementById('paper-add-journal').value.trim();
+    
+    const paperData = {
+        title: title,
+        source: source,
+        abstract: abstract,
+        url: doi || null,
+        votes: {},
+        votes_p2: {},
+        notes: {},
+        reasons: {},
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    
+    if(authors) paperData.authors = authors;
+    if(year) paperData.year = parseInt(year);
+    if(journal) paperData.journal = journal;
+    
+    db.collection('projects').doc(pid).collection('papers').add(paperData)
+        .then(() => {
+            alert("Paper added successfully!");
+            document.getElementById('paper-add-title').value = '';
+            document.getElementById('paper-add-abstract').value = '';
+            document.getElementById('paper-add-source').value = '';
+            document.getElementById('paper-add-source-other').value = '';
+            document.getElementById('paper-add-source-other').classList.add('hidden');
+            document.getElementById('paper-add-doi').value = '';
+            document.getElementById('paper-add-authors').value = '';
+            document.getElementById('paper-add-year').value = '';
+            document.getElementById('paper-add-journal').value = '';
+        })
+        .catch(err => {
+            console.error("Error adding paper:", err);
+            alert("Error adding paper: " + err.message);
+        });
+}
+
+function deletePaper(event, paperId) {
+    event.stopPropagation();
+    
+    const canAddPapers = isOwner || isScreenerAdmin || isPaperManager;
+    
+    if(!canAddPapers) {
+        alert("You don't have permission to delete papers.");
+        return;
+    }
+    
+    if(confirm("Are you sure you want to delete this paper?")) {
+        db.collection('projects').doc(pid).collection('papers').doc(paperId).delete()
+            .then(() => console.log("Paper deleted"))
+            .catch(err => {
+                console.error("Error deleting paper:", err);
+                alert("Error deleting paper: " + err.message);
+            });
+    }
+}
+
+function processImport(event) {
+    const canAddPapers = isOwner || isScreenerAdmin || isPaperManager;
+    
+    if(!canAddPapers) {
+        alert("You don't have permission to import papers. Contact the project owner.");
+        event.target.value = '';
+        return;
+    }
+    
+    if (importInProgress) {
+        alert("An import is already in progress. Please wait for it to complete.");
+        event.target.value = '';
+        return;
+    }
+    
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    // Validate file size (max 50MB)
+    if(file.size > 50 * 1024 * 1024) {
+        alert("File too large! Maximum size is 50MB. Please split your file into smaller chunks.");
+        event.target.value = '';
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const content = e.target.result;
+            
+            // Detect file format
+            const fileFormat = detectFileFormat(content, file.name);
+            
+            if(fileFormat === 'unknown') {
+                alert("Unable to detect file format. Supported formats: RIS (.ris), BibTeX (.bib), PubMed (.txt), CSV (.csv)");
+                return;
+            }
+            
+            // Detect source
+            detectedSource = detectSourceFromContent(content, fileFormat);
+            
+            // Parse based on format
+            let papers = [];
+            try {
+                if(fileFormat === 'csv') {
+                    papers = parseCSV(content);
+                } else if(fileFormat === 'bib') {
+                    papers = parseBibTeX(content);
+                } else if(fileFormat === 'pubmed') {
+                    papers = parsePubMedText(content);
+                } else if(fileFormat === 'ris') {
+                    papers = parseRIS(content);
+                }
+            } catch(parseError) {
+                console.error("Parse error:", parseError);
+                alert(`Error parsing file: ${parseError.message}. Please ensure the file format is correct.`);
+                return;
+            }
+            
+            // Validate parsed papers
+            const validPapers = papers.filter(p => p.title && p.title.trim().length > 0);
+            const invalidCount = papers.length - validPapers.length;
+            
+            if(validPapers.length === 0) {
+                alert(`No valid papers found in file. ${invalidCount} entries were missing titles.`);
+                return;
+            }
+            
+            if(invalidCount > 0) {
+                console.warn(`Skipped ${invalidCount} entries without titles`);
+            }
+            
+            papersToImport = validPapers;
+            showImportPreview();
+            
+        } catch(error) {
+            console.error("Import error:", error);
+            alert(`Error processing file: ${error.message}`);
+        }
+    };
+    
+    reader.onerror = function() {
+        alert("Error reading file. Please try again.");
+    };
+    
+    reader.readAsText(file);
+    event.target.value = '';
+}
+
+function parseCSV(content) {
+    const papers = [];
+    const lines = content.split('\n');
+    
+    if(lines.length < 2) return papers;
+    
+    // Parse CSV with proper quote handling
+    function parseCSVLine(line) {
+        const result = [];
+        let current = '';
+        let inQuotes = false;
+        
+        for(let i = 0; i < line.length; i++) {
+            const char = line[i];
+            
+            if(char === '"') {
+                if(inQuotes && line[i+1] === '"') {
+                    current += '"';
+                    i++;
+                } else {
+                    inQuotes = !inQuotes;
+                }
+            } else if(char === ',' && !inQuotes) {
+                result.push(current.trim());
+                current = '';
+            } else {
+                current += char;
+            }
+        }
+        result.push(current.trim());
+        return result;
+    }
+    
+    const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase().replace(/"/g, ''));
+    
+    const titleIdx = headers.findIndex(h => h.includes('title'));
+    const abstractIdx = headers.findIndex(h => h.includes('abstract'));
+    const doiIdx = headers.findIndex(h => h.includes('doi') || h.includes('url'));
+    const authorIdx = headers.findIndex(h => h.includes('author'));
+    const yearIdx = headers.findIndex(h => h.includes('year') || h.includes('date'));
+    const journalIdx = headers.findIndex(h => h.includes('journal') || h.includes('source') || h.includes('citation'));
+    
+    for(let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if(!line) continue;
+        
+        try {
+            const cols = parseCSVLine(line);
+            
+            if(titleIdx >= 0 && cols[titleIdx]) {
+                const paper = {
+                    title: cols[titleIdx].replace(/"/g, ''),
+                    abstract: abstractIdx >= 0 && cols[abstractIdx] ? cols[abstractIdx].replace(/"/g, '') : 'No abstract available.',
+                    url: doiIdx >= 0 && cols[doiIdx] ? cols[doiIdx].replace(/"/g, '') : null,
+                    authors: authorIdx >= 0 && cols[authorIdx] ? cols[authorIdx].replace(/"/g, '') : null,
+                    year: yearIdx >= 0 && cols[yearIdx] ? cols[yearIdx].replace(/"/g, '') : null,
+                    journal: journalIdx >= 0 && cols[journalIdx] ? cols[journalIdx].replace(/"/g, '') : null
+                };
+                
+                // Format DOI if needed
+                if(paper.url && !paper.url.startsWith('http')) {
+                    if(paper.url.startsWith('10.')) {
+                        paper.url = `https://doi.org/${paper.url}`;
+                    }
+                }
+                
+                papers.push(paper);
+            }
+        } catch(e) {
+            console.error(`Error parsing line ${i}:`, e);
+        }
+    }
+    
+    return papers;
+}
+
+// FIXED: Enhanced RIS parser with better multi-line handling
+function parseRIS(content) {
+    const papers = [];
+    const lines = content.split('\n');
+    let currentPaper = {};
+    let currentField = null;
+    
+    lines.forEach(line => {
+        line = line.trim();
+        
+        // Check for field tags
+        if(line.match(/^[A-Z][A-Z0-9]\s\s-\s/)) {
+            const tag = line.substring(0, 2);
+            const value = line.substring(6).trim();
+            
+            if(tag === 'TI' || tag === 'T1') {
+                currentPaper.title = value;
+                currentField = 'title';
+            } else if(tag === 'AB' || tag === 'N2') {
+                currentPaper.abstract = value;
+                currentField = 'abstract';
+            } else if(tag === 'DO') {
+                currentPaper.url = value.startsWith('http') ? value : `https://doi.org/${value}`;
+                currentField = null;
+            } else if(tag === 'AU' || tag === 'A1') {
+                if(!currentPaper.authors) currentPaper.authors = '';
+                currentPaper.authors += (currentPaper.authors ? ', ' : '') + value;
+                currentField = null;
+            } else if(tag === 'PY' || tag === 'Y1') {
+                const yearMatch = value.match(/\d{4}/);
+                if(yearMatch) currentPaper.year = yearMatch[0];
+                currentField = null;
+            } else if(tag === 'JO' || tag === 'T2' || tag === 'JF') {
+                currentPaper.journal = value;
+                currentField = null;
+            } else if(tag === 'ER') {
+                if(currentPaper.title) {
+                    if(!currentPaper.abstract) currentPaper.abstract = "No abstract available.";
+                    papers.push(currentPaper);
+                }
+                currentPaper = {};
+                currentField = null;
+            } else {
+                currentField = null;
+            }
+        } else if(line && currentField && !line.startsWith('ER')) {
+            // Continue multi-line field
+            if(currentField === 'title') {
+                currentPaper.title += ' ' + line;
+            } else if(currentField === 'abstract') {
+                currentPaper.abstract += ' ' + line;
+            }
+        }
+    });
+    
+    // Handle last paper if no ER tag
+    if(currentPaper.title) {
+        if(!currentPaper.abstract) currentPaper.abstract = "No abstract available.";
+        papers.push(currentPaper);
+    }
+    
+    return papers;
+}
+
+// FIXED: Enhanced PubMed parser
+function parsePubMedText(content) {
+    const papers = [];
+    const lines = content.split('\n');
+    let currentPaper = {};
+    let readingAbstract = false;
+    let currentField = null;
+    
+    lines.forEach(line => {
+        // Title
+        if(line.startsWith('TI  - ')) {
+            if(currentPaper.title) {
+                // Save previous paper
+                if(!currentPaper.abstract) currentPaper.abstract = "No abstract available.";
+                papers.push(currentPaper);
+                currentPaper = {};
+            }
+            currentPaper.title = line.substring(6).trim();
+            readingAbstract = false;
+            currentField = 'title';
+        } 
+        // Abstract
+        else if(line.startsWith('AB  - ')) {
+            currentPaper.abstract = line.substring(6).trim();
+            readingAbstract = true;
+            currentField = 'abstract';
+        }
+        // DOI
+        else if(line.match(/LID - .* \[doi\]/)) {
+            const doiMatch = line.match(/LID - ([^\s]+)/);
+            if(doiMatch) {
+                currentPaper.url = `https://doi.org/${doiMatch[1]}`;
+            }
+            readingAbstract = false;
+            currentField = null;
+        }
+        // Authors
+        else if(line.startsWith('AU  - ')) {
+            if(!currentPaper.authors) currentPaper.authors = '';
+            currentPaper.authors += (currentPaper.authors ? ', ' : '') + line.substring(6).trim();
+            currentField = null;
+        }
+        // Year
+        else if(line.startsWith('DP  - ')) {
+            const yearMatch = line.match(/\d{4}/);
+            if(yearMatch) currentPaper.year = yearMatch[0];
+            currentField = null;
+        }
+        // Journal
+        else if(line.startsWith('JT  - ')) {
+            currentPaper.journal = line.substring(6).trim();
+            currentField = null;
+        }
+        // Empty line - paper separator
+        else if(line.trim() === '') {
+            if(currentPaper.title) {
+                if(!currentPaper.abstract) currentPaper.abstract = "No abstract available.";
+                papers.push(currentPaper);
+                currentPaper = {};
+            }
+            readingAbstract = false;
+            currentField = null;
+        }
+        // Continue multi-line fields
+        else if(line.startsWith('      ')) {
+            if(currentField === 'abstract') {
+                currentPaper.abstract += ' ' + line.trim();
+            } else if(currentField === 'title') {
+                currentPaper.title += ' ' + line.trim();
+            }
+        }
+    });
+    
+    // Handle last paper
+    if(currentPaper.title) {
+        if(!currentPaper.abstract) currentPaper.abstract = "No abstract available.";
+        papers.push(currentPaper);
+    }
+    
+    return papers;
+}
+
+// FIXED: Enhanced BibTeX parser
+function parseBibTeX(content) {
+    const papers = [];
+    const entries = content.split(/@[a-zA-Z]+\{/);
+    
+    entries.forEach(entry => {
+        if(!entry.trim()) return;
+        
+        // Extract fields with better handling of nested braces
+        function extractField(fieldName) {
+            const regex = new RegExp(fieldName + '\\s*=\\s*[{"]', 'i');
+            const match = entry.match(regex);
+            if(!match) return null;
+            
+            const startIdx = entry.indexOf(match[0]) + match[0].length;
+            const delimiter = match[0].endsWith('{') ? '}' : '"';
+            let braceCount = delimiter === '}' ? 1 : 0;
+            let endIdx = startIdx;
+            
+            for(let i = startIdx; i < entry.length; i++) {
+                if(entry[i] === '{' && delimiter === '}') braceCount++;
+                else if(entry[i] === '}' && delimiter === '}') {
+                    braceCount--;
+                    if(braceCount === 0) {
+                        endIdx = i;
+                        break;
+                    }
+                } else if(entry[i] === delimiter && delimiter === '"') {
+                    endIdx = i;
+                    break;
+                }
+            }
+            
+            return entry.substring(startIdx, endIdx).trim();
+        }
+        
+        const title = extractField('title');
+        if(title) {
+            const abstract = extractField('abstract');
+            const doi = extractField('doi');
+            const author = extractField('author');
+            const year = extractField('year');
+            const journal = extractField('journal');
+            
+            const paper = {
+                title: title,
+                abstract: abstract || "No abstract available.",
+                url: doi ? (doi.startsWith('http') ? doi : `https://doi.org/${doi}`) : null,
+                authors: author ? author.replace(/\s+and\s+/g, ', ') : null,
+                year: year,
+                journal: journal
+            };
+            
+            papers.push(paper);
+        }
+    });
+    
+    return papers;
+}
+
+// FIXED: Better file type detection
+function detectFileFormat(content, filename) {
+    const ext = filename.split('.').pop().toLowerCase();
+    
+    // Check content patterns
+    if(content.includes('TY  - ') && content.includes('ER  - ')) {
+        return 'ris';
+    }
+    if(content.includes('PMID') || content.includes('TI  - ') || content.includes('AB  - ')) {
+        return 'pubmed';
+    }
+    if(content.includes('@article{') || content.includes('@inproceedings{')) {
+        return 'bib';
+    }
+    
+    // Fall back to extension
+    if(ext === 'csv' || ext === 'txt') return ext;
+    if(ext === 'ris') return 'ris';
+    if(ext === 'bib') return 'bib';
+    
+    return 'unknown';
+}
+
+// FIXED: Better source detection
+function detectSourceFromContent(content, fileType) {
+    if(content.includes('PMID') || content.includes('PubMed')) return 'PubMed';
+    if(content.includes('Scopus')) return 'Scopus';
+    if(content.includes('Web of Science') || content.includes('WoS')) return 'Web of Science';
+    if(content.includes('Embase')) return 'Embase';
+    if(fileType === 'ris') return 'RIS Import';
+    if(fileType === 'bib') return 'BibTeX Import';
+    if(fileType === 'csv') return 'CSV Import';
+    return 'Imported';
+}
+
+// FIXED: Ultra-optimized import with better error handling
+// ULTRA-FAST IMPORT with REAL-TIME PROGRESS
+// ULTRA-FAST IMPORT - NO SPEED DISPLAY
+// ULTRA-FAST IMPORT - FIXED FOR LARGE IMPORTS
+// FIXED IMPORT - SAVES ALL PAPERS TO DATABASE
+async function confirmImport() {
+    const source = document.getElementById('import-source-input').value.trim() || detectedSource || 'Imported';
+    
+    if(!source) {
+        alert("Please specify a source for the imported papers.");
+        return;
+    }
+    
+    // Validate papers
+    const papersWithSource = papersToImport
+        .filter(p => p && p.title && p.title.trim().length > 0)
+        .map(p => ({
+            title: p.title.trim(),
+            source: source,
+            abstract: (p.abstract || "No abstract available.").trim(),
+            url: p.url || null,
+            authors: p.authors ? p.authors.trim() : null,
+            year: p.year ? p.year.toString().trim() : null,
+            journal: p.journal ? p.journal.trim() : null
+        }));
+    
+    if (papersWithSource.length === 0) {
+        alert("No valid papers to import. All papers are missing titles.");
+        return;
+    }
+    
+    // Lock import
+    if (importInProgress) {
+        alert("Import already in progress!");
+        return;
+    }
+    
+    importInProgress = true;
+    
+    // Update UI
+    document.getElementById('import-progress').classList.remove('hidden');
+    const confirmBtn = document.getElementById('confirm-import-btn');
+    const cancelBtn = confirmBtn.previousElementSibling;
+    confirmBtn.disabled = true;
+    cancelBtn.disabled = true; // Prevent closing during import
+    confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importing...';
+    
+    const total = papersWithSource.length;
+    let imported = 0;
+    let failed = 0;
+    
+    const BATCH_SIZE = 400;
+    const totalBatches = Math.ceil(total / BATCH_SIZE);
+    
+    console.log(`🚀 Starting import: ${total} papers in ${totalBatches} batches`);
+    
+    // Initial UI
+    document.getElementById('progress-bar').style.width = '0%';
+    document.getElementById('progress-bar').innerText = '0%';
+    document.getElementById('progress-text').innerHTML = `
+        <span style="color:var(--info); font-weight:600;">Starting import of ${total} papers...</span>
+    `;
+    
+    try {
+        // Process each batch sequentially
+        for(let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
+            const startIdx = batchIndex * BATCH_SIZE;
+            const endIdx = Math.min(startIdx + BATCH_SIZE, total);
+            const chunk = papersWithSource.slice(startIdx, endIdx);
+            
+            console.log(`\n📦 === BATCH ${batchIndex + 1}/${totalBatches} ===`);
+            console.log(`   Range: ${startIdx} to ${endIdx}`);
+            console.log(`   Papers in batch: ${chunk.length}`);
+            
+            // Update UI for this batch
+            document.getElementById('progress-text').innerHTML = `
+                <span style="color:var(--info); font-weight:600;">Processing batch ${batchIndex + 1} of ${totalBatches}...</span><br>
+                <span style="font-size:0.85rem;">Papers ${startIdx + 1}-${endIdx} of ${total}</span>
+            `;
+            
+            // Create a BRAND NEW batch for this iteration
+            const batch = db.batch();
+            let batchCount = 0;
+            
+            // Add papers to batch
+            for(let i = 0; i < chunk.length; i++) {
+                const paper = chunk[i];
+                
+                try {
+                    const paperData = {
+                        title: paper.title,
+                        source: paper.source,
+                        abstract: paper.abstract,
+                        url: paper.url,
+                        votes: {},
+                        votes_p2: {},
+                        notes: {},
+                        reasons: {},
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    };
+                    
+                    if(paper.authors) paperData.authors = paper.authors;
+                    if(paper.year) paperData.year = paper.year;
+                    if(paper.journal) paperData.journal = paper.journal;
+                    
+                    // Create NEW document reference
+                    const docRef = db.collection('projects').doc(pid).collection('papers').doc();
+                    
+                    // Add to batch
+                    batch.set(docRef, paperData);
+                    batchCount++;
+                    
+                } catch(err) {
+                    console.error(`   ❌ Error preparing paper ${i}:`, err);
+                    failed++;
+                }
+            }
+            
+            console.log(`   📝 Prepared ${batchCount} papers for commit`);
+            
+            // COMMIT THIS BATCH
+            try {
+                console.log(`   💾 Committing batch ${batchIndex + 1}...`);
+                
+                // CRITICAL: Actually wait for the commit to complete
+                await batch.commit();
+                
+                imported += batchCount;
+                console.log(`   ✅ Batch ${batchIndex + 1} SUCCESS! Imported: ${imported}/${total}`);
+                
+            } catch(commitError) {
+                console.error(`   ❌ Batch ${batchIndex + 1} COMMIT FAILED:`, commitError);
+                console.error(`   Error code:`, commitError.code);
+                console.error(`   Error message:`, commitError.message);
+                
+                failed += batchCount;
+                
+                // Continue with next batch instead of stopping
+                continue;
+            }
+            
+            // Update progress UI
+            const progress = Math.round((imported / total) * 100);
+            document.getElementById('progress-bar').style.width = progress + '%';
+            document.getElementById('progress-bar').innerText = progress + '%';
+            document.getElementById('progress-text').innerHTML = `
+                <span style="color:var(--success); font-weight:600;">✓ Batch ${batchIndex + 1} complete</span><br>
+                <span style="font-size:0.85rem;">Saved ${imported} of ${total} papers (${failed} failed)</span>
+            `;
+            
+            // Wait between batches to avoid rate limits
+            if (batchIndex < totalBatches - 1) {
+                console.log(`   ⏳ Waiting 300ms before next batch...`);
+                await new Promise(resolve => setTimeout(resolve, 300));
+            }
+        }
+        
+        // ALL BATCHES COMPLETE
+        console.log(`\n🎉 === IMPORT COMPLETE ===`);
+        console.log(`   Total papers: ${total}`);
+        console.log(`   Successfully imported: ${imported}`);
+        console.log(`   Failed: ${failed}`);
+        
+        // Final UI update
+        document.getElementById('progress-bar').style.width = '100%';
+        document.getElementById('progress-bar').innerText = '100%';
+        document.getElementById('progress-text').innerHTML = `
+            <span style="color:var(--success); font-weight:700;"><i class="fas fa-check-circle"></i> Import Complete!</span><br>
+            <span style="font-size:0.85rem;">Successfully saved ${imported} of ${total} papers to database!${failed > 0 ? ` (${failed} failed)` : ''}</span>
+        `;
+        
+        // Success alert
+        alert(`Import successful!\n\n✓ Imported: ${imported} papers\n${failed > 0 ? `✗ Failed: ${failed} papers` : ''}`);
+        
+        // Close modal after delay
+        setTimeout(() => {
+            closeImportModal();
+            confirmBtn.disabled = false;
+            cancelBtn.disabled = false;
+            confirmBtn.innerHTML = '<i class="fas fa-check"></i> Import <span id="import-count"></span> Papers';
+            importInProgress = false;
+            
+            // Reload papers
+            console.log('🔄 Reloading papers list...');
+            loadScreening();
+        }, 2000);
+        
+    } catch (error) {
+        // CRITICAL ERROR
+        console.error("\n❌❌❌ CRITICAL IMPORT ERROR ❌❌❌");
+        console.error("Error:", error);
+        console.error("Stack:", error.stack);
+        
+        document.getElementById('progress-text').innerHTML = `
+            <span style="color:var(--danger); font-weight:700;"><i class="fas fa-exclamation-triangle"></i> Import Failed</span><br>
+            <span style="font-size:0.85rem;">${error.message}</span><br>
+            <span style="font-size:0.75rem; margin-top:0.5rem; display:block;">Imported ${imported} papers before error occurred.</span>
+        `;
+        
+        confirmBtn.disabled = false;
+        cancelBtn.disabled = false;
+        confirmBtn.innerHTML = '<i class="fas fa-redo"></i> Retry Import';
+        importInProgress = false;
+        
+        alert(`Import failed!\n\nError: ${error.message}\n\nImported ${imported} papers successfully before the error.\nYou can try importing again.`);
+    }
+}
+</script>
+</body>
+</html>
+

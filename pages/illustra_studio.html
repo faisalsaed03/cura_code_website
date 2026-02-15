@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Illustra Studio | Cura Code</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* ALL STYLES INCLUDED */
+        :root { --primary: #6AC9E8; --glass: rgba(255, 255, 255, 0.95); }
+        * { box-sizing: border-box; user-select: none; }
+        body { font-family: 'Nunito', sans-serif; margin: 0; background: #f0f7fa; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        
+        /* TOOLBAR */
+        .toolbar {
+            background: var(--glass); padding: 10px 20px; display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid #ccc; box-shadow: 0 5px 15px rgba(0,0,0,0.05); z-index: 100;
+        }
+        .logo { font-weight: 800; font-size: 1.2rem; color: #4FB3D9; cursor: pointer; }
+        .tools { display: flex; gap: 10px; align-items: center; }
+        
+        /* NOTE STYLE */
+        .info-note { font-size: 0.75rem; color: #e74c3c; font-weight: 700; background: #fff5f5; padding: 5px 10px; border-radius: 6px; border: 1px solid #ffcccc; }
+
+        .btn { padding: 8px 15px; border-radius: 8px; border: 1px solid #ddd; background: white; cursor: pointer; font-weight: 700; transition: 0.2s; }
+        .btn:hover { background: #eef; border-color: var(--primary); }
+        .btn-primary { background: var(--primary); color: white; border: none; }
+        .btn-primary:hover { opacity: 0.9; }
+
+        /* LAYOUT */
+        .workspace { display: flex; flex: 1; overflow: hidden; }
+        
+        /* LIBRARY SIDEBAR */
+        .sidebar { width: 300px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; z-index: 10; }
+        .search-box { padding: 15px; border-bottom: 1px solid #eee; }
+        .search-input { width: 100%; padding: 10px; border-radius: 8px; border: 2px solid #eee; }
+        .lib-content { flex: 1; overflow-y: auto; padding: 15px; }
+        
+        .cat-title { font-size: 0.8rem; font-weight: 800; color: #999; margin: 15px 0 5px; text-transform: uppercase; }
+        .icon-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
+        .icon-item { 
+            font-size: 1.8rem; background: #f9f9f9; border-radius: 5px; cursor: grab; 
+            display: flex; justify-content: center; align-items: center; height: 45px; transition: 0.2s;
+        }
+        .icon-item:hover { background: white; box-shadow: 0 5px 10px rgba(0,0,0,0.1); transform: scale(1.2); z-index: 5; }
+
+        /* CANVAS */
+        .canvas { flex: 1; position: relative; background: radial-gradient(#ddd 1px, transparent 1px) 0 0 / 20px 20px; overflow: hidden; }
+        .canvas.drag-over { background-color: rgba(106, 201, 232, 0.1); border: 4px dashed var(--primary); }
+        
+        /* OBJECTS */
+        .obj { position: absolute; cursor: grab; transform-origin: center; display: inline-block; }
+        .obj img { width: 100%; height: 100%; pointer-events: none; }
+        .obj-emoji { font-size: 4rem; line-height: 1; }
+        .obj-text { min-width: 50px; font-weight: 700; color: #333; padding: 5px; border: 1px dashed transparent; }
+        .obj-text:focus { border-color: var(--primary); background: white; outline: none; }
+
+        /* CONTROLS (Hover) */
+        .ctrls { opacity: 0; pointer-events: none; transition: 0.2s; }
+        .obj:hover .ctrls { opacity: 1; pointer-events: auto; }
+        
+        .handle { position: absolute; width: 15px; height: 15px; border-radius: 50%; border: 2px solid white; display: flex; justify-content: center; align-items: center; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .h-resize { background: var(--primary); bottom: -8px; right: -8px; cursor: nwse-resize; }
+        .h-rotate { background: #2ecc71; top: -25px; left: 50%; transform: translateX(-50%); cursor: grab; }
+        .h-rotate::after { content:''; position: absolute; top: 12px; height: 10px; width: 2px; background: #2ecc71; z-index: -1; }
+        .h-delete { background: #ff7675; top: -10px; right: -10px; color: white; font-size: 10px; font-weight: bold; width: 20px; height: 20px; }
+        .h-flip { background: #f39c12; top: -10px; left: -10px; color: white; font-size: 10px; width: 20px; height: 20px; }
+
+        /* UPLOAD HELPER */
+        .upload-row { display: flex; align-items: center; gap: 5px; background: #fff8e1; padding: 5px 10px; border-radius: 8px; border: 1px solid #ffe082; }
+        .magic-label { font-size: 0.7rem; color: #f39c12; font-weight: 800; display: flex; align-items: center; gap: 3px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div class="toolbar">
+        <div class="logo" onclick="window.location.href='../dashboard.html'">⬅ Back to Hub</div>
+        <div class="tools">
+            <span class="info-note">⚠️ Note: Download image from Drive first, then upload/drag here.</span>
+            
+            <button class="btn" onclick="window.open('https://drive.google.com/drive/folders/15_3V9zRW7rzMXNJa9f4JoGVaQ9OnyRjF?usp=drive_link', '_blank')">☁️ Cloud Lib</button>
+            <div class="upload-row">
+                <label class="magic-label"><input type="checkbox" id="magicBg"> No BG</label>
+                <button class="btn" onclick="document.getElementById('upImg').click()">📤 Upload</button>
+            </div>
+            <button class="btn" onclick="addText()">🔤 Text</button>
+            <button class="btn" onclick="document.getElementById('canvas').innerHTML=''">🗑 Clear</button>
+            <button class="btn btn-primary" onclick="saveImage()">📸 Download</button>
+        </div>
+    </div>
+
+    <div class="workspace">
+        <div class="sidebar">
+            <div class="search-box">
+                <input type="text" class="search-input" placeholder="Search icons..." onkeyup="renderLib(this.value)">
+            </div>
+            <div class="lib-content" id="libContainer"></div>
+        </div>
+        <div class="canvas" id="canvas" 
+             ondrop="drop(event)" 
+             ondragover="allowDrop(event)" 
+             ondragleave="removeDragStyle(event)">
+        </div>
+    </div>
+
+    <input type="file" id="upImg" hidden onchange="handleFile(this)">
+
+    <script>
+        // DATA LIBRARY
+        const library = [
+            { cat: "Human Body", items: ["🧠:brain", "🫀:heart", "🫁:lungs", "🦴:bone", "👁️:eye", "🦷:tooth", "🩸:blood", "👂:ear", "👃:nose", "🦶:foot", "💪:muscle", "🦵:leg", "🧬:dna", "🦠:virus", "🤒:fever", "🤕:bandage"] },
+            { cat: "Laboratory", items: ["🧪:test", "🔬:microscope", "💉:syringe", "💊:pill", "🌡️:thermometer", "🧫:petri", "⚖️:scale", "⚛️:atom", "🥽:goggles", "🥼:labcoat", "📋:chart", "📉:graph", "🔭:telescope", "📡:dish"] },
+            { cat: "Cells & Micro", items: ["🦠:microbe", "🧬:helix", "🌰:nut", "🥚:cell", "🟢:bacteria", "🔵:virus", "🔴:bloodcell", "⚪:leukocyte", "💠:crystal", "❄️:molecule"] },
+            { cat: "Animals", items: ["🐁:mouse", "🐀:rat", "🐇:rabbit", "🐸:frog", "🐟:fish", "🦟:insect", "🪰:fly", "🐕:dog", "🐒:monkey", "🦅:bird", "🐍:snake", "🦇:bat"] },
+            { cat: "Nature", items: ["🌱:plant", "🌿:leaf", "🍄:fungus", "☀️:sun", "🌧️:rain", "🌊:water", "🌍:earth", "🔥:fire", "⚡:electric", "🌳:tree", "🌵:cactus", "🌻:flower"] },
+            { cat: "Arrows", items: ["➡️:right", "⬅️:left", "⬆️:up", "⬇️:down", "🔄:cycle", "⤴️:curve", "⤵️:curve", "↔️:span", "↗️:ne", "↘️:se", "↙️:sw", "↖️:nw"] },
+            { cat: "Shapes & Symbols", items: ["✅:check", "❌:cross", "⚠️:warning", "❓:query", "❗:alert", "🔒:lock", "🔍:search", "🔴:red-cir", "🔵:blue-cir", "🟢:grn-cir", "🟡:yel-cir", "⬛:square", "🔺:tri"] }
+        ];
+
+        // RENDER LIBRARY
+        function renderLib(q = "") {
+            const con = document.getElementById('libContainer'); con.innerHTML = "";
+            library.forEach(c => {
+                const hits = c.items.filter(i => i.includes(q.toLowerCase()));
+                if(hits.length) {
+                    con.innerHTML += `<div class="cat-title">${c.cat}</div>`;
+                    const grid = document.createElement('div'); grid.className = 'icon-grid';
+                    hits.forEach(i => {
+                        const [char, tag] = i.split(':');
+                        grid.innerHTML += `<div class="icon-item" draggable="true" ondragstart="drag(event, '${char}')" title="${tag}">${char}</div>`;
+                    });
+                    con.appendChild(grid);
+                }
+            });
+        }
+        renderLib();
+
+        // --- DRAG & DROP LOGIC ---
+        function drag(e, char) { 
+            e.dataTransfer.setData("type", "icon");
+            e.dataTransfer.setData("char", char); 
+        }
+
+        function allowDrop(e) {
+            e.preventDefault();
+            document.getElementById('canvas').classList.add('drag-over');
+        }
+
+        function removeDragStyle(e) {
+            document.getElementById('canvas').classList.remove('drag-over');
+        }
+
+        function drop(e) {
+            e.preventDefault();
+            removeDragStyle(e);
+
+            // 1. Handle FILES (Desktop Drag)
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                const file = e.dataTransfer.files[0];
+                if(file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = (evt) => createObj(evt.target.result, e.offsetX, e.offsetY, true);
+                    reader.readAsDataURL(file);
+                }
+                return;
+            }
+
+            // 2. Handle INTERNAL Icons
+            const type = e.dataTransfer.getData("type");
+            if (type === "icon") {
+                const char = e.dataTransfer.getData("char");
+                if(char) createObj(char, e.offsetX, e.offsetY);
+                return;
+            }
+
+            // 3. Handle EXTERNAL IMAGES (Browser Drag)
+            // Try to get HTML content (often contains the <img> tag)
+            const html = e.dataTransfer.getData("text/html");
+            if (html) {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, "text/html");
+                const img = doc.querySelector("img");
+                if (img && img.src) {
+                    createObj(img.src, e.offsetX, e.offsetY, true);
+                    return;
+                }
+            }
+            
+            // Fallback for direct URL drag
+            const url = e.dataTransfer.getData("text/uri-list") || e.dataTransfer.getData("text/plain");
+            if(url && (url.startsWith('http') || url.startsWith('data:image'))) {
+                 createObj(url, e.offsetX, e.offsetY, true);
+            }
+        }
+
+        // CREATE OBJECTS
+        function createObj(content, x, y, isImg = false) {
+            const el = document.createElement('div');
+            el.className = 'obj ' + (isImg ? '' : 'obj-emoji');
+            el.style.left = (x-30)+'px'; el.style.top = (y-30)+'px';
+            el.dataset.r = 0; el.dataset.s = 1;
+
+            if(isImg) {
+                el.style.width = '150px';
+                const img = document.createElement('img'); 
+                img.src = content;
+                img.crossOrigin = "Anonymous"; // Attempt to handle CORS for download
+                
+                if(document.getElementById('magicBg').checked) img.style.mixBlendMode = 'multiply';
+                
+                // Handle load error (e.g. Google Drive security blocking)
+                img.onerror = function() {
+                    el.innerText = "⚠️ Image Blocked";
+                    el.style.fontSize = "12px";
+                    el.style.padding = "10px";
+                    el.style.background = "#fff";
+                    el.title = "This site blocks direct dragging. Please download the image first.";
+                };
+
+                el.appendChild(img);
+            } else {
+                el.innerText = content;
+            }
+
+            addControls(el, isImg);
+            el.onmousedown = (e) => startMove(e, el);
+            document.getElementById('canvas').appendChild(el);
+        }
+
+        function addText() {
+            const el = document.createElement('div');
+            el.className = 'obj obj-text';
+            el.contentEditable = true; el.innerText = "Label";
+            el.style.left='150px'; el.style.top='150px'; el.style.fontSize='24px';
+            el.dataset.r = 0; el.dataset.s = 1;
+            addControls(el, false);
+            el.onmousedown = (e) => { if(e.target === el) startMove(e, el); };
+            document.getElementById('canvas').appendChild(el);
+        }
+
+        function handleFile(input) {
+            if(input.files[0]) {
+                const r = new FileReader();
+                r.onload = (e) => createObj(e.target.result, 150, 150, true);
+                r.readAsDataURL(input.files[0]);
+            }
+        }
+
+        // CONTROLS & TRANSFORM
+        function addControls(el, isImg) {
+            const c = document.createElement('div'); c.className = 'ctrls';
+            c.innerHTML = `
+                <div class="handle h-delete" onmousedown="event.stopPropagation(); this.parentNode.parentNode.remove()">×</div>
+                <div class="handle h-rotate" onmousedown="startRotate(event, this.parentNode.parentNode)"></div>
+                <div class="handle h-resize" onmousedown="startResize(event, this.parentNode.parentNode, ${isImg})"></div>
+                <div class="handle h-flip" onmousedown="flip(event, this.parentNode.parentNode)">↔</div>
+            `;
+            el.appendChild(c);
+        }
+
+        function flip(e, el) { e.stopPropagation(); el.dataset.s = el.dataset.s == 1 ? -1 : 1; updateT(el); }
+        function updateT(el) { el.style.transform = `rotate(${el.dataset.r}deg) scaleX(${el.dataset.s})`; }
+
+        // MOUSE LOGIC
+        let mode = null, target = null, start = {};
+        function startMove(e, el) { if(e.target.className.includes('handle')) return; mode='move'; target=el; start={x:e.clientX-el.offsetLeft, y:e.clientY-el.offsetTop}; }
+        function startRotate(e, el) { e.stopPropagation(); mode='rotate'; target=el; const r = el.getBoundingClientRect(); start={cx:r.left+r.width/2, cy:r.top+r.height/2}; }
+        function startResize(e, el, img) { e.stopPropagation(); mode='resize'; target=el; start={mx:e.clientX, my:e.clientY, w:el.offsetWidth, fs:parseFloat(window.getComputedStyle(el).fontSize), img:img}; }
+
+        window.onmousemove = (e) => {
+            if(!mode) return;
+            if(mode === 'move') { target.style.left=(e.clientX-start.x)+'px'; target.style.top=(e.clientY-start.y)+'px'; }
+            if(mode === 'rotate') { 
+                const ang = Math.atan2(e.clientY-start.cy, e.clientX-start.cx) * 180 / Math.PI;
+                target.dataset.r = ang + 90; updateT(target);
+            }
+            if(mode === 'resize') {
+                const d = Math.max(e.clientX-start.mx, e.clientY-start.my);
+                if(start.img) target.style.width = Math.max(50, start.w + d)+'px';
+                else target.style.fontSize = Math.max(10, start.fs + d)+'px';
+            }
+        };
+        window.onmouseup = () => mode = null;
+
+        // SAVE
+        function saveImage() {
+            const c = document.getElementById('canvas');
+            document.querySelectorAll('.ctrls').forEach(x => x.style.display='none'); 
+            
+            html2canvas(c, { 
+                allowTaint: true, 
+                useCORS: true, 
+                backgroundColor: null // Transparent BG
+            }).then(can => {
+                const a = document.createElement('a'); a.download = 'cura-figure.png'; a.href = can.toDataURL(); a.click();
+                document.querySelectorAll('.ctrls').forEach(x => x.style.display=''); 
+            }).catch(err => {
+                alert("Download Error: Some external images are protected. Try taking a screenshot instead.");
+                document.querySelectorAll('.ctrls').forEach(x => x.style.display='');
+            });
+        }
+    </script>
+</body>
+</html>

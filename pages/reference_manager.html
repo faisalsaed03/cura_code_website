@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Reference Manager | Cura Code</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+
+    <style>
+        body { font-family: 'Nunito', sans-serif; background: linear-gradient(135deg, #f0f7fa 0%, #ffffff 100%); min-height: 100vh; margin: 0; display: flex; flex-direction: column; }
+        
+        .navbar { padding: 20px; width: 100%; box-sizing: border-box; background: rgba(255,255,255,0.8); backdrop-filter: blur(10px); position: sticky; top: 0; z-index: 100; border-bottom: 1px solid #eee; }
+        .back-btn { text-decoration: none; color: #2D3436; font-weight: 800; display: flex; align-items: center; gap: 8px; cursor: pointer; transition: 0.2s; }
+        .back-btn:hover { color: #6AC9E8; }
+        
+        .container { max-width: 1000px; margin: 40px auto; display: grid; grid-template-columns: 400px 1fr; gap: 30px; padding: 20px; }
+        
+        .panel { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); height: fit-content; transition: 0.3s; }
+        .panel:hover { box-shadow: 0 15px 40px rgba(0,0,0,0.08); }
+
+        h2 { margin-top: 0; color: #2D3436; font-size: 1.1rem; margin-bottom: 20px; font-weight: 800; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px; }
+
+        /* TABS */
+        .tabs { display: flex; background: #f1f2f6; border-radius: 10px; padding: 4px; margin-bottom: 20px; }
+        .tab { flex: 1; text-align: center; padding: 8px; cursor: pointer; border-radius: 8px; font-weight: 700; color: #636e72; font-size: 0.9rem; transition: 0.2s; }
+        .tab.active { background: white; color: #6AC9E8; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+
+        /* INPUTS */
+        .input-group { margin-bottom: 15px; }
+        label { display: block; font-size: 0.8rem; font-weight: 700; color: #636e72; margin-bottom: 5px; }
+        input, select { width: 100%; padding: 12px; border: 2px solid #eef2f5; border-radius: 10px; box-sizing: border-box; font-family: inherit; transition: 0.3s; }
+        input:focus, select:focus { border-color: #6AC9E8; outline: none; background: #f8fbfe; }
+
+        /* BUTTONS */
+        .btn { width: 100%; padding: 12px; border: none; border-radius: 10px; cursor: pointer; font-weight: 700; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn:hover { transform: translateY(-2px); }
+        
+        .btn-add { background: linear-gradient(135deg, #6AC9E8 0%, #4FB3D9 100%); color: white; box-shadow: 0 5px 15px rgba(106, 201, 232, 0.3); }
+        .btn-fetch { background: #6c5ce7; color: white; margin-bottom: 15px; box-shadow: 0 5px 15px rgba(108, 92, 231, 0.2); }
+        
+        .btn-txt { background: #b2bec3; color: white; }
+        .btn-ris { background: #fdcb6e; color: #2d3436; }
+        .btn-clear { background: #ff7675; color: white; margin-top: 15px; }
+
+        /* LIST */
+        #ref-list { list-style: none; padding: 0; margin: 0; max-height: 500px; overflow-y: auto; }
+        .ref-item { background: #fff; border: 1px solid #eee; padding: 15px; border-radius: 12px; margin-bottom: 10px; position: relative; transition: 0.2s; }
+        .ref-item:hover { border-color: #6AC9E8; transform: translateX(5px); }
+        .ref-text { padding-right: 30px; font-size: 0.95rem; line-height: 1.5; color: #2d3436; }
+        .ref-actions { position: absolute; right: 15px; top: 15px; }
+        .del-icon { color: #ff7675; cursor: pointer; transition: 0.2s; }
+        .del-icon:hover { transform: scale(1.2); }
+
+        .hidden { display: none; }
+        
+        #loading-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 9999; display: flex; align-items: center; justify-content: center; color: #6AC9E8; font-weight: 800; }
+        
+        @media(max-width: 900px) { .container { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div id="loading-screen">Verifying Access...</div>
+    
+    <nav class="navbar"><div class="back-btn" onclick="window.location.href='citation_hub.html'">⬅ Back to Hub</div></nav>
+
+
+    <div class="container">
+        
+        <div class="panel">
+            <h2>Add Reference</h2>
+            
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('manual')">Manual Entry</div>
+                <div class="tab" onclick="switchTab('doi')">Import DOI</div>
+            </div>
+
+            <div id="manual-form">
+                <div class="input-group">
+                    <label>Authors</label>
+                    <input type="text" id="auth" placeholder="e.g. Smith J, Doe A">
+                </div>
+                <div class="input-group">
+                    <label>Year</label>
+                    <input type="text" id="year" placeholder="e.g. 2023">
+                </div>
+                <div class="input-group">
+                    <label>Article Title</label>
+                    <input type="text" id="title" placeholder="Full Title">
+                </div>
+                <div class="input-group">
+                    <label>Journal / Source</label>
+                    <input type="text" id="source" placeholder="e.g. Nature">
+                </div>
+                <button class="btn btn-add" onclick="addRef()"><i class="fas fa-plus"></i> Add to List</button>
+            </div>
+
+            <div id="doi-form" class="hidden">
+                <div class="input-group">
+                    <label>DOI (Digital Object Identifier)</label>
+                    <input type="text" id="doi-input" placeholder="10.1038/s41586...">
+                </div>
+                <button class="btn btn-fetch" onclick="fetchDOI()">
+                    <i class="fas fa-search"></i> Search & Add
+                </button>
+                <p style="font-size:0.8rem; color:#888; text-align:center;">
+                    Uses CrossRef API to fetch metadata automatically.
+                </p>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:2px solid #f0f0f0; padding-bottom:10px;">
+                <h2 style="margin:0; border:none;">Bibliography (<span id="count">0</span>)</h2>
+                <select id="viewStyle" onchange="renderList()" style="width:auto; padding:8px;">
+                    <option value="apa">APA 7</option>
+                    <option value="vancouver">Vancouver</option>
+                    <option value="harvard">Harvard</option>
+                </select>
+            </div>
+            
+            <ul id="ref-list">
+                <li style="text-align:center; color:#ccc; padding:20px;">No references yet.</li>
+            </ul>
+            
+            <div style="margin-top:20px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <button class="btn btn-ris" onclick="exportRIS()"><i class="fas fa-file-export"></i> Zotero / RIS</button>
+                <button class="btn btn-txt" onclick="exportTXT()"><i class="fas fa-file-alt"></i> Word / TXT</button>
+            </div>
+            
+            <button class="btn btn-clear" onclick="clearList()"><i class="fas fa-trash"></i> Clear All</button>
+        </div>
+
+    </div>
+
+    <script>
+        // 1. FIREBASE AUTH
+        const firebaseConfig = { apiKey: "AIzaSyCbE13rFgfC6ipnf8-rYR8uAywsseU7Ntg", authDomain: "curacode-c6200.firebaseapp.com", projectId: "curacode-c6200", appId: "1:773218077864:web:217dcc93c6869acb44c69d" };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        firebase.auth().onAuthStateChanged(u => { if(u) document.getElementById('loading-screen').style.display='none'; else window.location.href="../login.html"; });
+
+        // 2. STATE
+        let references = [];
+
+        // 3. TAB LOGIC
+        function switchTab(mode) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            if(mode === 'manual') {
+                document.querySelector('.tab:nth-child(1)').classList.add('active');
+                document.getElementById('manual-form').classList.remove('hidden');
+                document.getElementById('doi-form').classList.add('hidden');
+            } else {
+                document.querySelector('.tab:nth-child(2)').classList.add('active');
+                document.getElementById('manual-form').classList.add('hidden');
+                document.getElementById('doi-form').classList.remove('hidden');
+            }
+        }
+
+        // 4. ADD REFERENCE (MANUAL)
+        function addRef() {
+            const auth = document.getElementById('auth').value.trim();
+            const year = document.getElementById('year').value.trim();
+            const title = document.getElementById('title').value.trim();
+            const source = document.getElementById('source').value.trim();
+
+            if(!title) return alert("Title is required");
+
+            references.push({ auth, year, title, source });
+            clearInputs();
+            renderList();
+        }
+
+        // 5. FETCH DOI (API)
+        async function fetchDOI() {
+            const doi = document.getElementById('doi-input').value.trim();
+            if(!doi) return alert("Please enter a DOI");
+
+            const btn = document.querySelector('.btn-fetch');
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Searching...';
+
+            try {
+                const response = await fetch(`https://api.crossref.org/works/${doi}`);
+                if(!response.ok) throw new Error("DOI Not Found");
+                
+                const data = await response.json();
+                const msg = data.message;
+
+                // Parse Data
+                const title = msg.title ? msg.title[0] : "Unknown Title";
+                const source = msg['container-title'] ? msg['container-title'][0] : "";
+                const year = msg.created['date-parts'][0][0] || "";
+                
+                // Parse Authors
+                let auth = "";
+                if(msg.author) {
+                    auth = msg.author.map(a => `${a.family}, ${a.given ? a.given[0] + '.' : ''}`).join(", ");
+                }
+
+                references.push({ auth, year, title, source });
+                document.getElementById('doi-input').value = "";
+                renderList();
+                
+                // Switch back to list view feeling
+                alert("Reference added successfully!");
+
+            } catch (err) {
+                alert("Error: " + err.message);
+            } finally {
+                btn.innerHTML = '<i class="fas fa-search"></i> Search & Add';
+            }
+        }
+
+        function clearInputs() {
+            document.getElementById('auth').value = "";
+            document.getElementById('year').value = "";
+            document.getElementById('title').value = "";
+            document.getElementById('source').value = "";
+        }
+
+        // 6. RENDER LIST
+        function renderList() {
+            const list = document.getElementById('ref-list');
+            const style = document.getElementById('viewStyle').value;
+            list.innerHTML = "";
+            document.getElementById('count').innerText = references.length;
+
+            if(references.length === 0) {
+                list.innerHTML = '<li style="text-align:center; color:#ccc; padding:20px;">No references yet.</li>';
+                return;
+            }
+
+            references.forEach((ref, index) => {
+                let text = "";
+                
+                // Styles
+                if(style === 'apa') {
+                    text = `<b>${ref.auth}</b> (${ref.year}). ${ref.title}. <i>${ref.source}</i>.`;
+                } else if (style === 'vancouver') {
+                    text = `${ref.auth}. ${ref.title}. ${ref.source}. ${ref.year}.`;
+                } else {
+                    text = `${ref.auth} (${ref.year}) "${ref.title}", ${ref.source}.`;
+                }
+
+                list.innerHTML += `
+                    <li class="ref-item">
+                        <div class="ref-text">${text}</div>
+                        <div class="ref-actions">
+                            <i class="fas fa-trash del-icon" onclick="delRef(${index})"></i>
+                        </div>
+                    </li>`;
+            });
+        }
+
+        function delRef(idx) {
+            references.splice(idx, 1);
+            renderList();
+        }
+
+        function clearList() {
+            if(confirm("Are you sure you want to delete all references?")) {
+                references = [];
+                renderList();
+            }
+        }
+
+        // 7. EXPORT LOGIC
+        function exportTXT() {
+            if(references.length === 0) return alert("List is empty");
+            let content = "Bibliography\n\n";
+            references.forEach(ref => content += `${ref.auth} (${ref.year}). ${ref.title}. ${ref.source}.\n\n`);
+            downloadFile(content, "bibliography.txt", "text/plain");
+        }
+
+        function exportRIS() {
+            if(references.length === 0) return alert("List is empty");
+            let content = "";
+            references.forEach(ref => {
+                content += "TY  - JOUR\n";
+                content += `TI  - ${ref.title}\n`;
+                content += `AU  - ${ref.auth}\n`;
+                content += `JO  - ${ref.source}\n`;
+                content += `PY  - ${ref.year}\n`;
+                content += "ER  - \n\n";
+            });
+            downloadFile(content, "citations.ris", "application/x-research-info-systems");
+        }
+
+        function downloadFile(content, filename, type) {
+            const blob = new Blob([content], { type: type });
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = filename;
+            a.click();
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Table Studio | Cura Code</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+
+    <style>
+        :root {
+            --primary: #6AC9E8;
+            --primary-dark: #4FB3D9;
+            --text: #2D3436;
+            --bg: #f0f2f5;
+            --sidebar-w: 300px;
+            --table-color: #6AC9E8;
+            --table-text: #ffffff;
+        }
+
+        * { box-sizing: border-box; outline: none; }
+
+        body {
+            font-family: 'Nunito', sans-serif;
+            margin: 0; padding: 0;
+            background: var(--bg);
+            color: var(--text);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* NAVBAR */
+        .navbar {
+            padding: 0 20px;
+            background: white;
+            border-bottom: 1px solid #ddd;
+            display: flex; justify-content: space-between; align-items: center;
+            height: 60px; z-index: 100;
+        }
+        .logo { font-weight: 800; font-size: 1.2rem; color: var(--primary-dark); display: flex; align-items: center; gap: 10px; }
+        .nav-right { display: flex; gap: 15px; align-items: center; }
+        .back-btn { text-decoration: none; color: #666; font-weight: 700; font-size: 0.9rem; transition: 0.2s; }
+        .back-btn:hover { color: var(--primary); }
+        .help-btn { background: #eef2f6; border: none; color: #555; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1rem; transition: 0.2s; }
+        .help-btn:hover { background: #dfe4ea; color: var(--primary); }
+
+        /* WORKSPACE */
+        .workspace { display: flex; height: calc(100vh - 60px); }
+
+        /* SIDEBAR */
+        .sidebar {
+            width: var(--sidebar-w);
+            background: white;
+            border-right: 1px solid #eee;
+            padding: 25px;
+            overflow-y: auto;
+            display: flex; flex-direction: column; gap: 25px;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.02); z-index: 10;
+        }
+
+        h2 { font-size: 0.9rem; text-transform: uppercase; color: #aaa; margin: 0 0 10px 0; letter-spacing: 1px; font-weight: 800; }
+
+        .control-group { background: #f8f9fa; padding: 15px; border-radius: 12px; border: 1px solid #eee; }
+        
+        .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 5px; }
+        .btn-action {
+            padding: 10px; border-radius: 8px; border: 1px solid #ddd;
+            background: white; font-weight: 700; color: #555; cursor: pointer;
+            transition: 0.2s; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; gap: 5px;
+        }
+        .btn-action:hover { border-color: var(--primary); color: var(--primary); background: #f0f9ff; }
+
+        .theme-grid { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+        .swatch {
+            width: 30px; height: 30px; border-radius: 50%; cursor: pointer;
+            border: 3px solid transparent; transition: 0.2s;
+        }
+        .swatch:hover, .swatch.active { transform: scale(1.1); box-shadow: 0 3px 10px rgba(0,0,0,0.2); border-color: #555; }
+
+        .toggle-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 0.9rem; font-weight: 700; color: #555; }
+        input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer; }
+
+        .btn-download {
+            width: 100%; padding: 15px; border: none; border-radius: 12px;
+            background: var(--primary); color: white; font-size: 1rem; font-weight: 800;
+            cursor: pointer; box-shadow: 0 8px 20px rgba(106, 201, 232, 0.3);
+            margin-top: auto; display: flex; align-items: center; justify-content: center; gap: 10px;
+            transition: 0.2s;
+        }
+        .btn-download:hover { transform: translateY(-2px); background: var(--primary-dark); }
+        .btn-download:disabled { opacity: 0.7; cursor: wait; }
+
+        /* PREVIEW AREA */
+        .preview-area {
+            flex: 1; background: #eef2f6; overflow: auto;
+            display: flex; align-items: center; justify-content: center;
+            padding: 40px;
+            background-image: radial-gradient(#dbe3eb 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        #artboard {
+            background: white; padding: 50px; border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+            min-width: 600px; max-width: 90%;
+            transition: width 0.3s;
+        }
+
+        /* TABLE STYLES (No Title) */
+        table { width: 100%; border-collapse: collapse; overflow: hidden; border-radius: 8px 8px 0 0; }
+        th {
+            background-color: var(--table-color); color: var(--table-text);
+            text-align: left; padding: 15px; font-weight: 800; letter-spacing: 0.5px;
+            border: 1px solid transparent;
+        }
+        td {
+            padding: 14px 15px; color: #444; border-bottom: 1px solid #eee;
+            border-left: 1px solid transparent; border-right: 1px solid transparent;
+        }
+        [contenteditable]:focus { outline: 2px solid #ffe082; background: #fffde7; color: black; }
+        table.striped tbody tr:nth-child(even) { background-color: #f9f9f9; }
+        table.bordered td, table.bordered th { border: 1px solid #e0e0e0; }
+
+        /* MODAL */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 2000;
+            backdrop-filter: blur(3px);
+        }
+        .modal {
+            background: white; width: 500px; padding: 30px; border-radius: 16px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.2); position: relative;
+        }
+        .modal h3 { margin-top: 0; font-size: 1.4rem; color: #333; }
+        .step { display: flex; gap: 15px; margin-bottom: 20px; }
+        .step-num { width: 30px; height: 30px; background: #e0f2fe; color: var(--primary); border-radius: 50%; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .step-text h4 { margin: 0 0 5px 0; font-size: 1rem; color: #333; }
+        .step-text p { margin: 0; font-size: 0.9rem; color: #666; line-height: 1.4; }
+        .close-modal { position: absolute; top: 15px; right: 20px; cursor: pointer; font-size: 1.5rem; color: #aaa; background: none; border: none; }
+        
+        #loading-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 9999; display: flex; align-items: center; justify-content: center; font-weight: 800; color: var(--primary); }
+
+        @media (max-width: 900px) {
+            .workspace { flex-direction: column; height: auto; }
+            .sidebar { width: 100%; height: auto; border-right: none; border-bottom: 1px solid #eee; }
+            #artboard { min-width: 100%; padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loading-screen">Verifying Access...</div>
+
+    <nav class="navbar">
+        <div class="logo"><i class="fas fa-table"></i> Table Studio</div>
+        <div class="nav-right">
+            <button class="help-btn" onclick="toggleHelp()"><i class="fas fa-question"></i></button>
+            <a href="../dashboard.html" class="back-btn">Exit</a>
+        </div>
+    </nav>
+
+    <div class="workspace">
+        <div class="sidebar">
+            <div>
+                <h2>Rows & Columns</h2>
+                <div class="control-group">
+                    <div class="btn-grid">
+                        <button class="btn-action" onclick="modTable('row','add')"><i class="fas fa-plus"></i> Add Row</button>
+                        <button class="btn-action" onclick="modTable('row','del')"><i class="fas fa-minus"></i> Del Row</button>
+                        <button class="btn-action" onclick="modTable('col','add')"><i class="fas fa-plus"></i> Add Col</button>
+                        <button class="btn-action" onclick="modTable('col','del')"><i class="fas fa-minus"></i> Del Col</button>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <h2>Theme</h2>
+                <div class="control-group">
+                    <div class="theme-grid">
+                        <div class="swatch active" style="background:#6AC9E8;" onclick="setTheme(this, '#6AC9E8', '#fff')"></div>
+                        <div class="swatch" style="background:#2ecc71;" onclick="setTheme(this, '#2ecc71', '#fff')"></div>
+                        <div class="swatch" style="background:#e17055;" onclick="setTheme(this, '#e17055', '#fff')"></div>
+                        <div class="swatch" style="background:#fdcb6e;" onclick="setTheme(this, '#fdcb6e', '#333')"></div>
+                        <div class="swatch" style="background:#6c5ce7;" onclick="setTheme(this, '#6c5ce7', '#fff')"></div>
+                        <div class="swatch" style="background:#2d3436;" onclick="setTheme(this, '#2d3436', '#fff')"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <h2>Style</h2>
+                <div class="control-group">
+                    <div class="toggle-row">
+                        <span>Striped Rows</span>
+                        <input type="checkbox" id="checkStriped" checked onchange="toggleStyle()">
+                    </div>
+                    <div class="toggle-row">
+                        <span>Full Borders</span>
+                        <input type="checkbox" id="checkBordered" onchange="toggleStyle()">
+                    </div>
+                </div>
+            </div>
+
+            <button id="dlBtn" class="btn-download" onclick="downloadTable()">
+                <i class="fas fa-camera"></i> Download PNG
+            </button>
+        </div>
+
+        <div class="preview-area">
+            <div id="artboard">
+                <table id="mainTable" class="striped">
+                    <thead>
+                        <tr>
+                            <th contenteditable="true">Parameter</th>
+                            <th contenteditable="true">Group A</th>
+                            <th contenteditable="true">Group B</th>
+                            <th contenteditable="true">P-Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td contenteditable="true">Age (Years)</td>
+                            <td contenteditable="true">45 ± 5</td>
+                            <td contenteditable="true">47 ± 6</td>
+                            <td contenteditable="true">0.12</td>
+                        </tr>
+                        <tr>
+                            <td contenteditable="true">BMI (kg/m²)</td>
+                            <td contenteditable="true">24.5</td>
+                            <td contenteditable="true">26.1</td>
+                            <td contenteditable="true">0.04*</td>
+                        </tr>
+                        <tr>
+                            <td contenteditable="true">Recovery</td>
+                            <td contenteditable="true">5 Days</td>
+                            <td contenteditable="true">7 Days</td>
+                            <td contenteditable="true">0.01*</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="helpModal" class="modal-overlay">
+        <div class="modal">
+            <button class="close-modal" onclick="toggleHelp()">×</button>
+            <h3>How to use Table Studio</h3>
+            <div class="step"><div class="step-num">1</div><div class="step-text"><h4>Edit Data</h4><p>Click any cell to type directly.</p></div></div>
+            <div class="step"><div class="step-num">2</div><div class="step-text"><h4>Structure</h4><p>Add/Remove rows & columns from sidebar.</p></div></div>
+            <div class="step"><div class="step-num">3</div><div class="step-text"><h4>Export</h4><p>Download as high-res PNG.</p></div></div>
+            <button class="btn-download" onclick="toggleHelp()" style="margin-top:10px;">Got it!</button>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = { apiKey: "AIzaSyCbE13rFgfC6ipnf8-rYR8uAywsseU7Ntg", authDomain: "curacode-c6200.firebaseapp.com", projectId: "curacode-c6200", appId: "1:773218077864:web:217dcc93c6869acb44c69d" };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        firebase.auth().onAuthStateChanged(u => { 
+            if(u) document.getElementById('loading-screen').style.display='none'; 
+            else window.location.href="../login.html"; 
+        });
+
+        function toggleHelp() {
+            const m = document.getElementById('helpModal');
+            m.style.display = (m.style.display === 'flex') ? 'none' : 'flex';
+        }
+
+        function modTable(type, action) {
+            const table = document.getElementById('mainTable');
+            const thead = table.querySelector('thead tr');
+            const tbody = table.querySelector('tbody');
+
+            if (type === 'row') {
+                if (action === 'add') {
+                    const row = document.createElement('tr');
+                    const cols = thead.children.length;
+                    for(let i=0; i<cols; i++) {
+                        const td = document.createElement('td'); td.contentEditable = "true"; td.innerText = "-"; row.appendChild(td);
+                    }
+                    tbody.appendChild(row);
+                } else if (tbody.children.length > 1) tbody.lastElementChild.remove();
+            } 
+            else if (type === 'col') {
+                if (action === 'add') {
+                    const th = document.createElement('th'); th.contentEditable = "true"; th.innerText = "Header"; thead.appendChild(th);
+                    Array.from(tbody.children).forEach(row => { const td = document.createElement('td'); td.contentEditable = "true"; td.innerText = "-"; row.appendChild(td); });
+                } else if (thead.children.length > 1) {
+                    thead.lastElementChild.remove();
+                    Array.from(tbody.children).forEach(row => row.lastElementChild.remove());
+                }
+            }
+        }
+
+        function setTheme(el, bg, text) {
+            document.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'));
+            el.classList.add('active');
+            document.documentElement.style.setProperty('--table-color', bg);
+            document.documentElement.style.setProperty('--table-text', text);
+        }
+
+        function toggleStyle() {
+            const table = document.getElementById('mainTable');
+            const striped = document.getElementById('checkStriped').checked;
+            const bordered = document.getElementById('checkBordered').checked;
+            if(striped) table.classList.add('striped'); else table.classList.remove('striped');
+            if(bordered) table.classList.add('bordered'); else table.classList.remove('bordered');
+        }
+
+        // --- FIXED DOWNLOAD LOGIC ---
+        function downloadTable() {
+            const btn = document.getElementById('dlBtn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Processing...`;
+            btn.disabled = true;
+
+            const source = document.getElementById('artboard');
+            
+            // 1. Create Wrapper FIXED at top left (Invisible)
+            const wrapper = document.createElement('div');
+            wrapper.style.position = 'fixed'; // IMPORTANT: Ignores scroll
+            wrapper.style.top = '0';
+            wrapper.style.left = '0';
+            wrapper.style.zIndex = '-9999'; 
+            wrapper.style.backgroundColor = '#ffffff';
+            wrapper.style.padding = '60px'; 
+            wrapper.style.width = 'auto'; // Fit content
+            wrapper.style.minWidth = '800px'; 
+            
+            // 2. Clone Table
+            const clone = source.cloneNode(true);
+            wrapper.appendChild(clone);
+            document.body.appendChild(wrapper);
+
+            // 3. Force Scroll Reset (Just in case)
+            const scrollPos = window.scrollY;
+            window.scrollTo(0,0);
+
+            html2canvas(wrapper, { 
+                scale: 3, // High Res
+                backgroundColor: "#ffffff",
+                y: 0, x: 0, scrollY: 0, scrollX: 0
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = 'CuraCode_Table.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                
+                // Cleanup
+                document.body.removeChild(wrapper);
+                window.scrollTo(0, scrollPos); // Restore Scroll
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }).catch(err => {
+                console.error(err);
+                alert("Error generating image.");
+                if(document.body.contains(wrapper)) document.body.removeChild(wrapper);
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            });
+        }
+    </script>
+
+</body>
+</html>

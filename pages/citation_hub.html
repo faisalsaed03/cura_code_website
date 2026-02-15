@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Citation Manager | Cura Code</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <style>
+        /* --- GLOBAL STYLES --- */
+        body { 
+            font-family: 'Nunito', sans-serif;
+            background: linear-gradient(135deg, #f0f7fa 0%, #ffffff 100%); 
+            min-height: 100vh; margin: 0;
+            color: #2D3436;
+        }
+
+        /* Navbar */
+        .navbar { 
+            padding: 20px 5%; 
+            background: rgba(255,255,255,0.95); 
+            backdrop-filter: blur(10px); 
+            position: sticky; top: 0; z-index: 100;
+            display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+        }
+        .back-link { 
+            text-decoration: none; color: #555; font-weight: 800; 
+            display: flex; align-items: center; gap: 8px; transition: 0.2s; 
+        }
+        .back-link:hover { color: #6AC9E8; }
+
+        /* Container */
+        .container { max-width: 1000px; margin: 60px auto; padding: 0 20px; }
+
+        /* Header */
+        .hub-header { text-align: center; margin-bottom: 60px; }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; color: #2D3436; }
+        p.sub { color: #888; font-size: 1.1rem; }
+
+        /* Grid */
+        .tools-grid { 
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); 
+            gap: 30px; 
+        }
+
+        /* Cards */
+        .tool-card {
+            background: white; padding: 40px 30px; border-radius: 24px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.04);
+            text-decoration: none; color: #333; transition: 0.3s;
+            display: flex; flex-direction: column; align-items: center; text-align: center;
+            position: relative; overflow: hidden;
+        }
+        .tool-card:hover { 
+            transform: translateY(-8px); 
+            box-shadow: 0 20px 60px rgba(106, 201, 232, 0.2); 
+            border-color: #6AC9E8;
+        }
+
+        /* Icons */
+        .icon-box { 
+            width: 70px; height: 70px; border-radius: 50%; 
+            display: flex; align-items: center; justify-content: center; 
+            font-size: 2rem; margin-bottom: 20px; transition: 0.3s;
+        }
+        
+        .c-blue .icon-box { background: #e3f2fd; color: #0984e3; }
+        .c-purple .icon-box { background: #f3e5f5; color: #8e44ad; }
+        .c-orange .icon-box { background: #fff3e0; color: #e67e22; }
+
+        h3 { margin: 0 0 10px 0; font-size: 1.3rem; font-weight: 800; }
+        span { font-size: 0.95rem; color: #888; line-height: 1.6; }
+
+        /* Loading Screen */
+        #loading-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: white; z-index: 9999; display: flex; 
+            align-items: center; justify-content: center; 
+            font-weight: 800; color: #6AC9E8; font-size: 1.2rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loading-screen">Verifying Access...</div>
+
+    <nav class="navbar">
+        <a href="../dashboard.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+    </nav>
+
+    <div class="container">
+        
+        <div class="hub-header">
+            <h1>Citation Manager</h1>
+            <p class="sub">Generate, organize, and export references for your manuscript.</p>
+        </div>
+
+        <div class="tools-grid">
+
+            <a href="citation_generator.html" class="tool-card c-blue">
+                <div class="icon-box"><i class="fas fa-pen-nib"></i></div>
+                <h3>Quick Generator</h3>
+                <span>Create APA, Vancouver, MLA, and Chicago citations manually.</span>
+            </a>
+
+            <a href="reference_manager.html" class="tool-card c-purple">
+                <div class="icon-box"><i class="fas fa-list-ul"></i></div>
+                <h3>Reference List Builder</h3>
+                <span>Compile a bibliography and export it to Word or BibTeX.</span>
+            </a>
+
+            <a href="doi_fetcher.html" class="tool-card c-orange">
+                <div class="icon-box"><i class="fas fa-magic"></i></div>
+                <h3>DOI Auto-Fetcher</h3>
+                <span>Paste a DOI link to instantly retrieve metadata and format it.</span>
+            </a>
+
+        </div>
+    </div>
+
+    <script>
+        // 1. FIREBASE CONFIGURATION
+        const firebaseConfig = {
+            apiKey: "AIzaSyCbE13rFgfC6ipnf8-rYR8uAywsseU7Ntg",
+            authDomain: "curacode-c6200.firebaseapp.com",
+            projectId: "curacode-c6200",
+            storageBucket: "curacode-c6200.firebasestorage.app",
+            messagingSenderId: "773218077864",
+            appId: "1:773218077864:web:217dcc93c6869acb44c69d",
+            measurementId: "G-3DYN1MFLVF"
+        };
+
+        // Initialize Firebase
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const auth = firebase.auth();
+
+        // 2. SECURITY CHECK
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                document.getElementById('loading-screen').style.display = 'none';
+            } else {
+                window.location.href = "../login.html";
+            }
+        });
+    </script>
+
+</body>
+</html>

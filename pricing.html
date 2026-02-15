@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pricing Plans | Cura Code</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --primary: #6AC9E8;
+            --primary-dark: #4FB3D9;
+            --accent: #ff7675;
+            --text-main: #2D3436;
+            --bg-body: #f4f9fc;
+            --card-shadow: 0 10px 30px rgba(0,0,0,0.05);
+        }
+
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: var(--bg-body);
+            color: var(--text-main);
+            margin: 0; padding: 0;
+            display: flex; flex-direction: column; min-height: 100vh;
+        }
+
+        /* NAVBAR */
+        .navbar {
+            padding: 15px 40px;
+            background: rgba(255,255,255,0.95); backdrop-filter: blur(10px);
+            display: flex; justify-content: space-between; align-items: center;
+            position: sticky; top: 0; z-index: 100;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+        .logo { font-size: 1.4rem; font-weight: 900; color: var(--primary-dark); text-decoration: none; display: flex; align-items: center; gap: 10px; }
+        .back-link { color: #636e72; text-decoration: none; font-weight: 700; font-size: 0.9rem; transition: 0.2s; }
+        .back-link:hover { color: var(--primary); }
+
+        /* HEADER */
+        .header { text-align: center; padding: 50px 20px 30px; }
+        .header h1 { font-size: 2.5rem; font-weight: 900; margin: 0; color: #2D3436; }
+        .header p { color: #636e72; font-size: 1.1rem; margin-top: 10px; }
+        .discount-banner {
+            background: #ffecec; color: #ff7675; display: inline-block;
+            padding: 8px 20px; border-radius: 50px; font-weight: 800;
+            margin-top: 15px; font-size: 0.9rem;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+
+        /* CONTROLS */
+        .controls { max-width: 600px; margin: 0 auto 40px; text-align: center; background: white; padding: 10px; border-radius: 50px; display: flex; gap: 5px; box-shadow: var(--card-shadow); position: relative; }
+        
+        .toggle-btn {
+            flex: 1; padding: 15px; border: none; border-radius: 40px;
+            background: transparent; color: #636e72; font-weight: 800; font-size: 1rem;
+            cursor: pointer; transition: 0.3s; position: relative; z-index: 2;
+        }
+        .toggle-btn.active { background: var(--primary); color: white; box-shadow: 0 5px 15px rgba(106, 201, 232, 0.4); }
+
+        /* GROUP SELECTOR */
+        #group-selector-container {
+            max-width: 600px; margin: -20px auto 40px; text-align: center;
+            display: none; /* Hidden by default */
+            animation: slideDown 0.3s ease;
+        }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+        select {
+            padding: 12px 20px; border-radius: 12px; border: 2px solid #eef2f5;
+            font-family: inherit; font-size: 1rem; font-weight: 700; color: #2D3436;
+            cursor: pointer; outline: none; background: white; width: 100%; max-width: 300px;
+            box-shadow: var(--card-shadow); transition: 0.2s;
+        }
+        select:focus { border-color: var(--primary); }
+
+        /* PRICING GRID */
+        .pricing-container {
+            max-width: 1300px; margin: 0 auto; width: 100%; padding: 0 20px 60px;
+            display: grid; 
+            /* Auto-fit with a slightly smaller min-width ensures 5 cards fit nicely */
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+            gap: 25px;
+            justify-content: center;
+        }
+
+        .price-card {
+            background: white; border-radius: 24px; padding: 30px 20px;
+            box-shadow: var(--card-shadow); border: 2px solid transparent;
+            text-align: center; position: relative; transition: 0.3s;
+            display: flex; flex-direction: column;
+        }
+        .price-card:hover { transform: translateY(-10px); border-color: var(--primary); box-shadow: 0 20px 40px rgba(106, 201, 232, 0.15); }
+        
+        .price-card.popular { border-color: var(--primary); background: linear-gradient(180deg, #f0fbff 0%, #ffffff 100%); }
+        .badge {
+            position: absolute; top: -15px; left: 50%; transform: translateX(-50%);
+            background: var(--primary); color: white; padding: 5px 15px;
+            border-radius: 20px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase;
+            box-shadow: 0 5px 15px rgba(106, 201, 232, 0.3);
+            white-space: nowrap;
+        }
+
+        .duration { font-size: 1.1rem; font-weight: 800; color: #636e72; margin-bottom: 10px; }
+        
+        .pricing-block { margin: 20px 0; }
+        .original-price { text-decoration: line-through; color: #b2bec3; font-size: 1rem; font-weight: 700; margin-bottom: 5px; }
+        .current-price { font-size: 3rem; font-weight: 900; color: #2D3436; line-height: 1; }
+        .currency { font-size: 1.2rem; vertical-align: top; margin-right: 2px; color: #636e72; }
+        
+        .save-tag { 
+            display: inline-block; background: #e3f9e5; color: #27ae60; 
+            padding: 4px 10px; border-radius: 8px; font-size: 0.8rem; font-weight: 800;
+            margin-top: 10px;
+        }
+
+        .cta-btn {
+            margin-top: auto; padding: 15px; width: 100%; border: none; border-radius: 12px;
+            background: #25D366; color: white; font-weight: 800; cursor: pointer;
+            font-size: 1rem; transition: 0.2s; display: flex; justify-content: center; align-items: center; gap: 8px;
+        }
+        .cta-btn:hover { background: #1ebc57; transform: scale(1.02); }
+        
+        /* FOOTER */
+        .footer { text-align: center; padding: 40px; color: #b2bec3; font-size: 0.85rem; margin-top: auto; }
+
+        @media (max-width: 600px) {
+            .header h1 { font-size: 2rem; }
+            .controls { border-radius: 16px; flex-direction: column; gap: 10px; padding: 15px; }
+            .toggle-btn { width: 100%; border-radius: 10px; }
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <a href="index.html" class="logo"><i class="fas fa-layer-group"></i> CURA CODE</a>
+        <a href="index.html" class="back-link">Back to Home</a>
+    </nav>
+
+    <div class="header">
+        <div class="discount-banner">🔥 LIMITED TIME: 90% OFF ALL PLANS</div>
+        <h1>Choose Your Plan</h1>
+        <p>Unlock the full power of systematic review tools.</p>
+    </div>
+
+    <div class="controls">
+        <button class="toggle-btn active" onclick="setMode('individual')">Individual</button>
+        <button class="toggle-btn" onclick="setMode('group')">Group / Team</button>
+    </div>
+
+    <div id="group-selector-container">
+        <select id="group-size" onchange="updatePrices()">
+            <option value="1">2 - 5 People</option>
+            <option value="2">6 - 10 People</option>
+            <option value="3">11 - 15 People</option>
+            <option value="4">16 - 20 People</option>
+            <option value="5">More than 20 People</option>
+        </select>
+    </div>
+
+    <div class="pricing-container">
+        
+        <div class="price-card">
+            <div class="duration">1 Month</div>
+            <div class="pricing-block">
+                <div class="original-price" id="p1-old">40 JD</div>
+                <div class="current-price"><span class="currency">JD</span><span id="p1-new">4</span></div>
+                <div class="save-tag">SAVE 90%</div>
+            </div>
+            <button class="cta-btn" onclick="contactWhatsApp('1 Month', 'p1-new')">
+                <i class="fab fa-whatsapp"></i> Get Started
+            </button>
+        </div>
+
+        <div class="price-card">
+            <div class="duration">2 Months</div>
+            <div class="pricing-block">
+                <div class="original-price" id="p2-old">70 JD</div>
+                <div class="current-price"><span class="currency">JD</span><span id="p2-new">7</span></div>
+                <div class="save-tag">SAVE 90%</div>
+            </div>
+            <button class="cta-btn" onclick="contactWhatsApp('2 Months', 'p2-new')">
+                <i class="fab fa-whatsapp"></i> Get Started
+            </button>
+        </div>
+
+        <div class="price-card popular">
+            <div class="badge">Popular</div>
+            <div class="duration">3 Months</div>
+            <div class="pricing-block">
+                <div class="original-price" id="p3-old">90 JD</div>
+                <div class="current-price"><span class="currency">JD</span><span id="p3-new">9</span></div>
+                <div class="save-tag">SAVE 90%</div>
+            </div>
+            <button class="cta-btn" onclick="contactWhatsApp('3 Months', 'p3-new')">
+                <i class="fab fa-whatsapp"></i> Get Started
+            </button>
+        </div>
+
+        <div class="price-card">
+            <div class="duration">6 Months</div>
+            <div class="pricing-block">
+                <div class="original-price" id="p4-old">190 JD</div>
+                <div class="current-price"><span class="currency">JD</span><span id="p4-new">19</span></div>
+                <div class="save-tag">SAVE 90%</div>
+            </div>
+            <button class="cta-btn" onclick="contactWhatsApp('6 Months', 'p4-new')">
+                <i class="fab fa-whatsapp"></i> Get Started
+            </button>
+        </div>
+
+        <div class="price-card">
+            <div class="badge" style="background:#2ecc71;">Best Value</div>
+            <div class="duration">1 Year</div>
+            <div class="pricing-block">
+                <div class="original-price" id="p5-old">380 JD</div>
+                <div class="current-price"><span class="currency">JD</span><span id="p5-new">38</span></div>
+                <div class="save-tag">SAVE 90%</div>
+            </div>
+            <button class="cta-btn" onclick="contactWhatsApp('1 Year', 'p5-new')">
+                <i class="fab fa-whatsapp"></i> Get Started
+            </button>
+        </div>
+
+    </div>
+
+    <div class="footer">
+        © 2025 Cura Code. <br>
+        Contact us directly via WhatsApp for activation codes.
+    </div>
+
+    <script>
+        // --- CONFIGURATION: PUT YOUR NUMBER HERE ---
+        const WHATSAPP_NUMBER = "9627XXXXXXXX"; 
+        // -------------------------------------------
+
+        let currentMode = 'individual';
+        // Base Prices: 1m, 2m, 3m, 6m, 1y
+        const basePrices = [4, 7, 9, 19, 38];
+
+        function setMode(mode) {
+            currentMode = mode;
+            const buttons = document.querySelectorAll('.toggle-btn');
+            
+            if(mode === 'individual') {
+                buttons[0].classList.add('active');
+                buttons[1].classList.remove('active');
+                document.getElementById('group-selector-container').style.display = 'none';
+                updatePrices();
+            } else {
+                buttons[0].classList.remove('active');
+                buttons[1].classList.add('active');
+                document.getElementById('group-selector-container').style.display = 'block';
+                updatePrices();
+            }
+        }
+
+        function updatePrices() {
+            let prices = [...basePrices];
+
+            if (currentMode === 'group') {
+                const level = parseInt(document.getElementById('group-size').value);
+                const increment = 3 * level; 
+                prices = prices.map(p => p + increment);
+            }
+
+            // Update DOM elements p1 to p5
+            for(let i=0; i<prices.length; i++) {
+                let idNum = i + 1;
+                document.getElementById(`p${idNum}-new`).innerText = prices[i];
+                document.getElementById(`p${idNum}-old`).innerText = (prices[i] * 10) + " JD";
+            }
+        }
+
+        function contactWhatsApp(duration, priceId) {
+            const price = document.getElementById(priceId).innerText;
+            const mode = currentMode === 'individual' ? 'Individual' : 'Group';
+            let extraText = "";
+
+            if(currentMode === 'group') {
+                const select = document.getElementById('group-size');
+                const groupText = select.options[select.selectedIndex].text;
+                extraText = ` for ${groupText}`;
+            }
+
+            // Create Message
+            const msg = `Hello Cura Code, I would like to subscribe to the ${mode} Plan (${duration})${extraText}. Price: ${price} JD. Please send me the payment details.`;
+            
+            // Open WhatsApp
+            const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`;
+            window.open(url, '_blank');
+        }
+        
+        // Init
+        updatePrices();
+    </script>
+
+</body>
+</html>
